@@ -19,6 +19,13 @@
 	<PropertyGroup>
 		<NoWarn>BL0007</NoWarn>
 		<RunAnalyzersDuringBuild>False</RunAnalyzersDuringBuild>
+		<Title>Blazor Awesome Components</Title>
+		<PackageProjectUrl>https://blazor.aspnetawesome.com/</PackageProjectUrl>
+		<Description>UI Components for Blazor </Description>
+		<RepositoryUrl>https://github.com/omuleanu/BlazorAwesome</RepositoryUrl>
+		<PackageTags>blazor .net dotnet c# wasm</PackageTags>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 	</PropertyGroup>
 	
 	<ItemGroup>
@@ -27,5 +34,16 @@
 	
 	<ItemGroup>
 	  <Folder Include="Properties\PublishProfiles\" />
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <None Include="..\LICENSE">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	  <None Include="..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
 	</ItemGroup>	
 </Project>
