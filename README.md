@@ -1,6 +1,6 @@
 ## Blazor Awesome Components
 
-[![NuGet](http://img.shields.io/nuget/v/Omu.BlazorAwesome.svg?label=NuGet)](https://www.nuget.org/packages/Omu.BlazorAwesome/)
+[![buildtest](https://github.com/omuleanu/BlazorAwesome/actions/workflows/buildtest.yml/badge.svg)](https://github.com/omuleanu/BlazorAwesome/actions/workflows/buildtest.yml) [![NuGet](http://img.shields.io/nuget/v/Omu.BlazorAwesome.svg?label=NuGet)](https://www.nuget.org/packages/Omu.BlazorAwesome/)
 
 Live demo: [blazor.aspnetawesome.com](https://blazor.aspnetawesome.com)
 
