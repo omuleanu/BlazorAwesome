@@ -1,0 +1,32 @@
+﻿@typeparam TKey
+@inherits OCheckboxListNative<TKey>
+@{  
+    base.BuildRenderTree(__builder);
+}
+
+@code {
+    protected override RenderFragment DisplayMarkup()
+    {
+        if (getData is null) return null;
+        // spaces/new line chars between o-chk and o-con will result in visible space between them (inline-block elements)
+
+        return
+    @<div class="awe-display o-ochk">
+        <ul>
+            @foreach (var item in getData)
+            {
+                var sel = valContains((TKey)item.Key);
+                var chkclass = sel ? "o-chked" : string.Empty;
+
+                <li class="o-chkm @(chkclass)">
+                    <label class="awe-label">                        
+                        <div tabindex="0" class="o-chk @(chkclass)"><div class="o-chkc"><div class="o-chkico"></div></div>
+                        </div><input type="checkbox" checked="@(sel)" value="@item.Key" @onchange="@(async () => await toggleVal((TKey)item.Key))" 
+                        style="display:none" disabled="@IsDisabled" /><div class="o-con">@item.Content</div>
+                    </label>
+                </li>
+            }
+        </ul>
+    </div>;
+    }
+}

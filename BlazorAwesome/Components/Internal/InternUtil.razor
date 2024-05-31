@@ -1,0 +1,24 @@
+﻿@code {
+    public static RenderFragment ColSelCaption()
+    {
+        return @<div class="o-cptn"><i class="o-o"></i><i class="o-o"></i><i class="o-o"></i></div>;
+    }
+
+    public static RenderFragment ColgroupHeader<T>(GridState<T> gs)
+    {
+        var columnsToRender = gs.VisibleColumns.ToArray();
+
+        var indentCount = gs.Model.TreeHeight;
+        return
+    @<text>
+        @for (var i = 0; i < indentCount; i++)
+        {
+            <col class="awe-idn">
+        }
+        @for (var i = 0; i < columnsToRender.Count(); i++)
+        {
+            <col style="@RenderUtil.ColStyle(columnsToRender[i].Column)" data-i="@i">
+        }
+    </text>;
+    }
+}

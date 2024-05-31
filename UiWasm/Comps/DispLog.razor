@@ -1,0 +1,31 @@
+@{
+    var enm = Obj as System.Collections.IEnumerable;
+}
+
+@if (enm is not null)
+{
+    @AweUtil.Serialize(enm)
+}
+else
+{
+    var props = Obj.GetType().GetProperties();
+    <ul class="logDisp">
+        @foreach (var prop in props)
+        {
+            <li>
+                @prop.Name : @AweUtil.Serialize(prop.GetValue(Obj))
+            </li>
+        }
+    </ul>
+}
+<style>
+    .logDisp {
+        list-style: none;
+    }
+</style>
+
+@code {
+
+    [Parameter]
+    public object Obj { get; set; }
+}

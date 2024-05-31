@@ -1,0 +1,98 @@
+﻿@using Omu.BlazorAwesome.Components.Internal
+@typeparam TKey
+@inherits OEditorWithData<TKey>
+<div class="o-selectdd awe-ajaxdropdown-field awe-field @fieldClass">
+    <select class="awe-display" @bind:get="value" @bind:set="async val => await onValueChange(val)" disabled="@IsDisabled">
+        @if (getData is not null)
+        {
+            @foreach (var item in getData)
+            {
+                <option selected="@(Equals(item.Key, value))" value="@item.Key">@item.Content</option>
+            }
+        }
+    </select>
+</div>
+
+@code {
+    private TKey value;
+    private string log = string.Empty;
+
+    [Parameter]
+    public TKey Value
+    {
+        set
+        {
+            this.value = value;
+        }
+
+        get
+        {
+            return value;
+        }
+    }
+
+    //private TKey bindVal
+    //{
+    //    get { return value; }
+    //    set
+    //    {
+    //        this.value = value;
+    //        if (Equals(this.value, value)) return;
+    //        //setValAsync(value);
+    //        //ValueChanged.InvokeAsync(value);
+    //        //FieldChanged();
+    //    }
+    //}
+
+    private async Task onValueChange(TKey value)
+    {
+        await changeValue(value);
+    }
+
+    [Parameter]
+    public EventCallback<TKey> ValueChanged { get; set; }
+
+    private async Task changeValue(object objval)
+    {
+        BindConverter.TryConvertTo<TKey>(objval.ToString(), CompUtil.CurrentCulture(), out var val);
+
+        if (Equals(value, val)) return;
+
+        await setValAsync(val);
+    }
+
+    protected async override Task OnInitializedAsync()
+    {        
+        await setFirstOptionWhenNoVal();
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task setFirstOptionWhenNoVal()
+    {        
+        if (getData is not null && getData.Any() && value is null)
+        {
+            await changeValue(getData.First().Key ?? string.Empty);
+        }
+    }
+
+    protected async Task setValAsync(TKey val)
+    {
+        value = val;
+        await ValueChanged.InvokeAsync(value);
+        await afterChange();
+        FieldChanged();
+    }
+
+    protected override async Task checkValInData()
+    {
+        var nul = default(TKey);
+
+        await CompUtil.CheckValues<TKey>(object.Equals(value, nul) ? null : new[] { value }, getData, async (nvals) =>
+        {
+            await setValAsync(nvals.Any() ? nvals.First() : nul);
+        });
+
+        await setFirstOptionWhenNoVal();
+    }
+}

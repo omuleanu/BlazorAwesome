@@ -1,0 +1,101 @@
+﻿@inject NavigationManager NavManager
+<aside id="sideMenuCont">
+    <div id="menuPlaceh"></div>
+    <div id="menuModal"></div>
+    <div id="demoMenu">
+        <div id="Menu" class="scrlh">
+            <OSelectList @ref="selectList" TKey="string" Value="value"
+                         Opt="@(new(){
+                    Data = data,
+                    ItemFunc = itemFunc,
+                    FilterPredicate = (itm, filterStr) =>
+                    {
+                        var slitm = (SiteMapItem)itm;
+                        return
+                            slitm.Content.Contains(filterStr, StringComparison.OrdinalIgnoreCase) ||
+                            (slitm.Keywords is not null && slitm.Keywords.Contains(filterStr, StringComparison.OrdinalIgnoreCase));
+                    },
+                    SelectedClass = "menusel",
+                    CssClass = "menuSelLst",
+                    ItemsContStyle = "height: calc(100vh - 125px)" 
+                })" />
+        </div>
+    </div>
+</aside>
+<style>
+    #Menu .o-itm.menusel {
+        background-color: var(--menuselcol);
+    }
+
+    #Menu .o-itm.focus {
+        background-color: var(--menufoccol);
+    }
+
+    #Menu .o-itm {
+        padding: 0;
+        line-height: 1.5em;
+    }
+
+    #Menu .mnitm.selected:before {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        content: "";
+        background-color: #5c87b2;
+        border-radius: 0 1px 1px 0;
+    }
+
+    .mnitm {
+        font-size: 16px;
+        padding: 0.55em 1em;
+    }
+
+        .mnitm:hover {
+            background: none;
+        }
+</style>
+@code {
+    private IEnumerable<string> value;
+    private IEnumerable<KeyContent> data;
+    private OSelectList<string> selectList;
+
+    private IEnumerable<string> getValue()
+    {
+        var key = NavManager.ToBaseRelativePath(NavManager.Uri);
+        var qi = key.IndexOf("?");
+        if (qi > -1)
+        {
+            key = key.Substring(0, qi);
+        }
+
+        if (key.Length > 0 && key.Last() == '/')
+        {
+            key = key.Substring(0, key.Length - 1);
+        }
+
+        value = new[] { key };
+
+        return value;
+    }
+
+    protected override void OnInitialized()
+    {
+        value = getValue();
+
+        data = SiteMap.LinksList;
+
+        NavManager.LocationChanged += (sender, args) =>
+        {
+            value = getValue();
+            StateHasChanged();
+        };
+    }
+
+    private RenderFragment itemFunc(KeyContent item)
+    {
+        return @<NavLink class="mnitm" href="@item.Key" ActiveClass="selected"
+              Match="((string)item.Key == string.Empty ? NavLinkMatch.All : NavLinkMatch.Prefix)">@item.Content</NavLink>;
+    }
+}

@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+	
+	<PropertyGroup>
+		<TargetFramework>net7.0</TargetFramework>
+		<AssemblyName>Omu.BlazorAwesome</AssemblyName>
+		<RootNamespace>Omu.BlazorAwesome</RootNamespace>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<SignAssembly>True</SignAssembly>
+		<AssemblyOriginatorKeyFile>bawe.snk</AssemblyOriginatorKeyFile>
+		<Configurations>Debug;Release</Configurations>
+		<AssemblyTitle>Blazor Awesome Components</AssemblyTitle>
+		<Version>1.1.19</Version>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<SupportedPlatform Include="browser" />
+	</ItemGroup>
+	
+	<PropertyGroup>
+		<NoWarn>BL0007</NoWarn>
+		<RunAnalyzersDuringBuild>False</RunAnalyzersDuringBuild>
+	</PropertyGroup>
+	
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="7.0.1" />
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <Folder Include="Properties\PublishProfiles\" />
+	</ItemGroup>	
+</Project>

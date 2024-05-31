@@ -1,0 +1,35 @@
+@code
+{
+    public static RenderFragment LunchImgFood(Lunch lunch)
+    {        
+        return
+    @<text><img alt="food" class="food" src=" @(DemoUtils.FoodUrl + lunch.Food.Pic)" width="45" height="33" />
+        @lunch.Food.Name</text>;
+    }
+
+    public static RenderFragment ImgCaptionFunc(KeyContent itm)
+    {
+        var item = itm as ImgKeyContent;
+        return
+    @<text>
+        <img alt="item picture" width="23" height="17" class="cthumb" src="@item.Url">
+        @item.Content
+    </text>
+    ;
+    }
+
+    public static RenderFragment ImgItemFunc(KeyContent itm)
+    {        
+        var item = itm as ImgKeyContent;
+        // item can be null for Combobox combo item
+        return
+        @<div class="o-igit">
+            @if(item is not null)
+                {
+            <img width="45" height="33" alt="item" src="@item?.Url">
+        }
+                
+                @itm.Content</div>
+    ;
+    }
+}

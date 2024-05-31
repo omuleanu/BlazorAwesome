@@ -1,0 +1,120 @@
+﻿@inject IJSRuntime JS
+@using System.Globalization
+@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Components.Forms
+@using Omu.BlazorAwesome.Components.Internal
+
+@implements IHandleEvent
+@inherits OEditorBase<string>
+<div class="awe-txt-field awe-field o-cmped o-txtf @fieldClass @ClearFieldClass">
+    <div class="awe-elcont">
+        <input @onfocusin="OnFocusin"
+               @onfocusout="OnFocusout"
+               type="text" class="@inputClass"
+               value="@InputVal"
+               @onchange="onInputValChange"
+               size="1" autocomplete="off" disabled="@(IsDisabled)"
+               placeholder="@Opt?.Placeholder" />
+
+        @if (HasClearBtn)
+        {
+            <button class="awe-btn awe-clrbtn" type="button" @onclick="clearValue" disabled="@(IsDisabled)">
+                <span class="awe-icon awe-icon-x"></span>
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    protected string strValue = string.Empty;
+    private bool inputFocused;
+
+    protected bool HasClearBtn => CompUtil.HasClearButton(Opt, OContext);
+
+    protected string ClearFieldClass => HasClearBtn ? Consts.HasClrClass : null;
+
+    protected override IEditorOpt getOpt()
+    {
+        return Opt;
+    }
+
+    protected string inputClass
+    {
+        get
+        {
+            var res = "awe-display awe-txt";
+            if (inputFocused) res += " awe-aedit";
+            return res;
+        }
+    }
+
+    protected async Task triggerChange()
+    {
+        await afterChange();
+
+        FieldChanged();
+    }
+
+    protected string InputVal
+    {
+        get
+        {
+            if (inputFocused) return strValue;
+            return Opt?.FormatFunc is not null ? Opt.FormatFunc(strValue) : strValue;
+        }
+    }
+
+    protected async Task onInputValChange(ChangeEventArgs args)
+    {
+        var value = args.Value.ToString();
+        if (strValue == value) return;
+        strValue = value;
+        await ValueChanged.InvokeAsync(strValue);
+        await triggerChange();
+    }
+
+    [Parameter]
+    public TextboxOpt Opt { get; set; }
+
+    [Parameter]
+    public string Value
+    {
+        set
+        {
+            this.strValue = value;
+        }
+
+        get
+        {
+            return strValue;
+        }
+    }
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object arg)
+    {
+        return callback.InvokeAsync(arg);
+    }
+
+    private void OnFocusin()
+    {
+        inputFocused = true;
+        StateHasChanged();
+    }
+
+    private void OnFocusout()
+    {
+        inputFocused = false;
+        StateHasChanged();
+    }
+
+    private async Task clearValue()
+    {
+        if (strValue == string.Empty) return;
+        strValue = string.Empty;
+        await ValueChanged.InvokeAsync(strValue);
+        await triggerChange();
+    }
+}

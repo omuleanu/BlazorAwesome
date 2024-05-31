@@ -1,0 +1,45 @@
+﻿@using Omu.BlazorAwesome.Core
+@inject IDbContextFactory<MyContext> cxf
+@inject CachedItems cache
+
+<h2>Cascade using local data</h2>
+
+<OField Label="Category2">
+    <ODropdownList @bind-Value="category2"
+                   Opt="new(){ DataFunc = cache.Categories, ClearBtn = true }" />
+</OField>
+<OField Label="Meal2">
+    <ODropdownList @bind-Value="meal2" Opt="new(){ DataFunc = getMealsByCategory2, ParentValueFunc = () => category2 }" />
+</OField>
+<OField Label="Meals">
+    <OMultiselect @bind-Value="multival" Opt="new(){ DataFunc = getMealsByCategory2, ParentValueFunc = () => category2 }" />
+</OField>
+
+<div class="expl ntben">
+    Cascade effect can be achieved in various ways.
+    In this example we use data that was loaded on OnInitializedAsync in a data field.
+</div>
+@code
+{
+    private int? category2;
+    private int? meal2;
+    private IEnumerable<int> multival;
+    private IEnumerable<Meal> mealsData;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using (var mcx = await cxf.CreateDbContextAsync())
+        mealsData = await mcx.Meals.Include(m => m.Category).ToArrayAsync();
+        StateHasChanged();
+    }
+
+    private async Task<IEnumerable<KeyContent>> getMealsByCategory2()
+    {
+        if (!category2.HasValue || mealsData is null)
+        {
+            return Enumerable.Empty<KeyContent>();
+        }
+
+        return mealsData.Where(m => m.Category.Id == category2).Select(m => new KeyContent(m.Id, m.Name));
+    }
+}

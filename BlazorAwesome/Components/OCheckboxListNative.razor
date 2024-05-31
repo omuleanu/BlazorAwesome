@@ -1,0 +1,99 @@
+﻿@using Omu.BlazorAwesome.Components.Internal
+@inject IJSRuntime JS
+@typeparam TKey
+@inherits OEditorWithData<IEnumerable<TKey>>
+<div class="awe-ajaxcheckboxlist-field awe-field @fieldClass">
+    @DisplayMarkup()
+</div>
+@*@AweUtil.Stringify(values)*@
+@code {
+    protected List<TKey> values = null;
+
+    [Parameter]
+    public IEnumerable<TKey> Value
+    {
+        set
+        {
+            if (values is null) values = new List<TKey>();
+
+            values.Clear();
+            values.AddArray(value);
+        }
+
+        get
+        {
+            return values;
+        }
+    }
+
+    [Parameter]
+    public EventCallback<IEnumerable<TKey>> ValueChanged { get; set; }
+
+    protected override async Task checkValInData()
+    {
+        await CompUtil.CheckValues(values, getData, async (nvals) =>
+            {
+                values.Clear();
+                values.AddRange(nvals);
+                await triggerValueChanged();
+            });
+    }
+
+    protected bool valContains(TKey key)
+    {
+        if (values is null) return false;
+        return values.Any(v => Equals(key, v));
+    }
+
+    protected async Task toggleVal(TKey key)
+    {
+        var index = -1;
+        if (values is null) values = new();
+        for (var i = 0; i < values.Count; i++)
+        {
+            if (Equals(values[i], key))
+            {
+                index = i;
+            }
+        }
+
+        if (index < 0)
+        {
+            values.Add(key);
+        }
+        else
+        {
+            values.RemoveAt(index);
+        }
+
+        await triggerValueChanged();
+    }
+
+    private async Task triggerValueChanged()
+    {
+        // avoid returning ref, which will be cleared in Value.set
+        await ValueChanged.InvokeAsync(values.Count == 0 ? null : values.ToArray());
+        await afterChange();
+        FieldChanged();
+    }
+
+    protected virtual RenderFragment DisplayMarkup()
+    {
+        if (getData is null) return null;
+
+        return
+    @<div class="awe-display">
+        <ul>
+            @foreach (var item in getData)
+            {
+                <li>
+                    <label class="awe-label">
+                        <input type="checkbox" checked="@valContains((TKey) item.Key)"
+                       value="@item.Key" @onchange="@(async () => await toggleVal((TKey) item.Key))" disabled="@IsDisabled" />@item.Content
+                    </label>
+                </li>
+            }
+        </ul>
+    </div>;
+    }
+}

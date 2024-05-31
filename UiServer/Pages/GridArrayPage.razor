@@ -1,0 +1,119 @@
+﻿@page "/GridArrayDataSource"
+@using Omu.BlazorAwesome.Core
+@inject CachedItems cache;
+
+<OGrid Opt="gopt" />
+
+@code
+{
+    private object[][] data = new[]
+    {
+        new object[] { 1, "Tomato", 2 },
+        new object[] { 2, "Cucumber", 3 },
+        new object[] { 3, "Sea buckthorn", 5 },
+        new object[] { 4, "Cranberry", 7 },
+        new object[] { 5, "Raspberry", 3 },
+        new object[] { 6, "Redcurrant", 1 },
+        new object[] { 7, "Blackcurrant", 1 },
+    };
+
+    private GridOpt<object[]> gopt = new()
+    {
+        ContentHeight = 350,
+    };
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private void initGrid()
+    {
+        var headers = new[] { "Id", "Name", "Quantity" };
+
+        gopt.GetKeyFunc = arr => arr[0];
+
+        gopt.GetQuery = () => data.AsQueryable();
+
+        gopt.GetBindValue = (bind, itm) =>
+        {
+            var arr = (object[])itm;
+            var index = Convert.ToInt32(bind);
+            return new[] { arr[index] };
+        };
+
+        gopt.OrderBy = ArrayOrderBy;
+
+        List<Column<object[]>> columns = new();
+
+        for (int i = 0; i < headers.Length; i++)
+        {
+            var i1 = i;
+            var column = new Column<object[]>()
+                {
+                    Header = headers[i1],
+                    GetStr = arr => arr[i1].ToString(),
+                    Width = i1 == 0 ? 100 : 0,
+                    Bind = i1.ToString()
+                };
+
+            // skip filter for first column
+            if (i > 0)
+            {
+                column.Filter(new()
+                    {
+                        Query = val => arr => arr[i1].ToString()
+                        .Contains(val.ToString(), StringComparison.InvariantCultureIgnoreCase),
+                        Render = col => i1 == 2 ?
+                            gopt.State.FilterNumeric(this, col) :
+                            gopt.State.FilterTextbox(this, col)
+                    });
+            }
+
+            columns.Add(column);
+        }
+
+        gopt.Columns = columns;
+
+        gopt.FilterRow = true;
+    }
+
+    private IQueryable<object[]> ArrayOrderBy(IQueryable<object[]> q)
+    {
+        var rules = gopt.State.GetSortRules();
+        var firstOrder = true;
+
+        IOrderedQueryable<object[]> q1 = null;
+        foreach (var rule in rules)
+        {
+            var index = Convert.ToInt32(rule.Key);
+
+            if (rule.Value == Sort.Asc)
+            {
+                if (firstOrder)
+                {
+                    q1 = q.OrderBy(arr => arr[index]);
+                }
+                else
+                {
+                    q1 = q1.ThenBy(arr => arr[index]);
+                }
+            }
+            else
+            {
+                if (firstOrder)
+                {
+                    q1 = q.OrderByDescending(arr => arr[index]);
+                }
+                else
+                {
+                    q1 = q1.ThenByDescending(arr => arr[index]);
+                }
+            }
+
+            firstOrder = false;
+        }
+
+        return q1 ?? q;
+    }
+}

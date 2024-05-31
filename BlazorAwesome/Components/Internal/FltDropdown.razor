@@ -1,0 +1,16 @@
+﻿@typeparam T
+<ODropdownList Opt="Opt" TKey="object"
+               ValueChanged="async val => await GridState.FilterValChange(ColumnState.Id, val)"
+               Value="GridState.GetFilterValue(ColumnState.Id)" />
+
+@code {
+
+    [Parameter]
+    public DropdownOpt Opt { get; set; }
+
+    [Parameter]
+    public GridState<T> GridState { get; set; }
+
+    [Parameter]
+    public ColumnState<T> ColumnState { get; set; }
+}

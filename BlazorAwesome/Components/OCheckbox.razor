@@ -1,0 +1,25 @@
+﻿@inherits OCheckboxNative
+@{
+    base.BuildRenderTree(__builder);
+}
+
+@code {
+
+    private string InDivClass => Value ? "o-chked" : "";
+
+    private async Task InDivClick()
+    {
+        if (IsDisabled) return;
+        Value = !Value;
+        await ValueChanged.InvokeAsync(Value);
+        await afterChange();
+    }
+
+    protected override RenderFragment DisplayMarkup()
+    {
+        return
+    @<div class="o-chk @InDivClass" @onclick="InDivClick">
+        <div class="o-chkc"><div tabindex="0" class="o-chkico"></div></div>
+        </div>;
+    }   
+}

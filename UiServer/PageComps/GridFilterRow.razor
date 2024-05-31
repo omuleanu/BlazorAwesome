@@ -1,0 +1,195 @@
+﻿@using Omu.BlazorAwesome.Core
+@inject IDbContextFactory<MyContext> cxf
+@inject CachedItems cache
+
+<OGrid Opt="gopt" @ref="grid" />
+
+@code
+{
+    private OGrid<Lunch> grid;
+    private GridOpt<Lunch> gopt = new();
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private void initGrid()
+    {        
+        gopt.ContentHeight = 250;
+
+        gopt.KeyProp = m => m.Id;
+
+        gopt.EFData(
+            cxf, 
+            cx => cx.Lunches
+            .Include(p => p.Food)
+            .Include(p => p.Meals)
+            .Include(p => p.Chef)
+            .Include(p => p.Country));
+
+        gopt.FilterRow = true;
+        gopt.ColumnWidth = 200;
+
+        gopt.Column(new()
+        {
+            For = m => m.Id,
+            Width = 100
+        });
+
+        gopt.Column(new()
+        {
+            For = m => m.Person,
+            Grow = 1.2,
+        })
+        .StringFilter(gopt, this);
+
+        gopt.Column(new()
+        {
+            For = m => m.Food.Name,
+            Header = "Food",
+            Render = RenderComp.LunchImgFood
+        })
+        .Filter(new()
+            {
+                Query = val => itm => itm.Food.Id == (int?)val,
+
+                // not using the grid query, showing list of all Foods regardless of current grid query
+                GetData = async query => await cache.Foods(),
+                Render = foodFilterDropdown
+            });
+
+        gopt.Column(new()
+        {
+            For = m => m.Country.Name,
+            Header = "Country"
+        })
+        .Filter(new()
+            {
+                Query = val => itm => itm.Country.Id == (int?)val,
+
+                GetData = async fcx => (await fcx.Query.Select(o => o.Country).Distinct().ToArrayAsync())
+                    .Select(o => new KeyContent(o.Id, o.Name))
+            });
+
+        gopt.Column(new()
+        {
+            For = m => m.Date,
+        })
+        .DateOpFilter(gopt, this);
+
+        gopt.Column(new()
+        {
+            Header = "Meals",
+            GetStr = o => string.Join(", ", o.Meals.Select(o => o.Name)),
+            Grow = 1.5
+        }).Filter(new()
+        {
+            Render = cs => gopt.State.FilterMultiselect<Lunch, int>(this, cs),
+
+            GetData = async fcx =>
+            {                
+                var items = await fcx.Query.SelectMany(o => o.Meals).Distinct().OrderBy(o => o.Id).ToArrayAsync();
+                return items.Select(o => new KeyContent(o.Id, o.Name)).ToArray();
+            },
+
+            Query = val =>
+            {
+                var ids = (IEnumerable<int>)val;
+                var count = ids.Count();
+                return itm => itm.Meals.Count(m => ids.Contains(m.Id)) == count;
+            },
+            SelfFilter = true
+        });
+
+        gopt.Column(new()
+        {
+            For = m => m.Price
+        })
+        .NumericOpFilter(gopt, this);
+
+        gopt.Column(new()
+            {
+                Header = "Chef",
+                GetStr = o => o.Chef.FullName
+            })
+        .For(m => m.Chef.FirstName, m => m.Chef.LastName)
+        .Filter(new()
+        {
+            Query = val => itm => itm.Chef.Id == (int)val,
+            Render = chefRemoteFilterDropdown
+        });
+    }
+
+    #region chef remote search filter
+    private List<KeyContent> chefsData = new();
+    private Func<string, Task<bool>> getChefSearchFunc(string columnId)
+    {
+        return async str =>
+    {
+        str = str.Trim();
+        if (str.Length == 0) return false;
+
+        #region optional perf optim
+        // don't load when local results count > 10
+        if (chefsData.Count(o => o.Content.Contains(str)) > 10) return false;
+        #endregion
+
+        // clear items, leave only selected value
+        var vals = chefsData.Where(o => object.Equals(o.Key, grid.State.GetFilterValue(columnId))).ToList();
+        chefsData.Clear();
+        chefsData.AddRange(vals);
+
+        using var mcx = cxf.CreateDbContext();
+        var res = await mcx.Chefs
+            .Where(m => m.FirstName.Contains(str) || m.LastName.Contains(str))
+            .Take(10).ToArrayAsync();
+
+        foreach (var resitem in res)
+        {
+            if (!chefsData.Select(o => o.Key).Contains(resitem.Id))
+            {
+                chefsData.Add(new KeyContent(resitem.Id, resitem.FullName));
+            }
+        }
+
+        return true;
+    };
+    }
+
+    // remote search filter dropdown
+    // for use cases when there's an infinite amount of options (chefs in this example)
+    private RenderFragment chefRemoteFilterDropdown(ColumnState<Lunch> column)
+    {
+        var opt = new DropdownOpt
+                {
+                    ClearBtn = true,
+                    Data = chefsData,
+                    SearchFunc = getChefSearchFunc(column.Id)
+                };
+
+        return
+    @<ODropdownList Opt="opt" TKey="object"
+               ValueChanged="async val => await grid.State.FilterValChange(column.Id, val)"
+               Value="grid.State.GetFilterValue(column.Id)" />;
+    }
+    #endregion
+
+    #region food image dropdown filter
+    // custom render func used to add ImgItemRender,
+    // if you remove the usage of this func, the food dropdown won't have images
+    private RenderFragment foodFilterDropdown(ColumnState<Lunch> column)
+    {
+        var data = (IEnumerable<KeyContent>)grid.State.GetFilterData(column.Id);
+        var opt = new DropdownOpt
+                {
+                    ClearBtn = true,
+                    Data = data
+                }.ImgItemRender();
+
+        return @<ODropdownList Opt="opt" TKey="object"
+               ValueChanged="async val => await grid.State.FilterValChange(column.Id, val)"
+               Value="grid.State.GetFilterValue(column.Id)" />;
+    }
+    #endregion
+}

@@ -1,0 +1,153 @@
+@inject IJSRuntime JS
+@implements IDisposable
+
+<h2>Drag and Drop Item Count</h2>
+
+<div class="board" @ref="cont">
+    <div class="card source">
+        @foreach (var itm in meals)
+        {
+            <div class="item o-dragItm" data-k="@itm.Id">@itm.Name</div>
+        }
+    </div>
+
+    @foreach (var basket in baskets)
+    {
+        <div class="card basket o-dragCont" data-k="@basket.Id">
+            @foreach (var itm in basket.Items)
+            {
+                <div class="item o-dragItm" data-k="@itm.Key.Id">
+                    @itm.Key.Name @itm.Value
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<br />
+@foreach (var basket in baskets)
+{
+    <div class="awe-il contDisp">
+        <br />
+        <ul>
+            @foreach (var itm in basket.Items)
+            {
+                <li>@itm.Key.Name @itm.Value</li>
+            }
+        </ul>
+    </div>
+}
+
+@code
+{
+    private ElementReference cont;
+    private DotNetObjectReference<DragAndDropCount> objRef;
+
+    private List<Basket> baskets = new();
+    private Meal[] meals = { };
+
+    protected override async Task OnInitializedAsync()
+    {
+        //await Task.Delay(100);
+        await seedData();
+    }
+
+    private async Task seedData()
+    {
+            meals = Db.Meals.Take(10).ToArray();
+
+        baskets.Add(new Basket() { Id = 1, Items = new() { { meals[1], 1 } } });
+        baskets.Add(new Basket() { Id = 2, Items = new() { { meals[2], 2 } } });
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            objRef = DotNetObjectReference.Create(this);
+            await AweUtil.InitDragReorder(JS, new()
+                {
+                    Cont = cont,
+                    Selector = ".source .item",
+
+                    ToCont = cont,
+                    ToSelector = ".basket",
+
+                    NoSourceHide = true,
+                    NoPlaceholder = true,
+
+                    ObjRef = objRef,
+                    DropMethod = nameof(MoveItem),
+                });
+
+            await AweUtil.InitDragReorder(JS, new()
+                {
+                    Cont = cont,
+                    Selector = ".basket .item",
+
+                    ToCont = cont,
+                    ToSelector = ".source",
+
+                    NoSourceHide = true,
+                    NoPlaceholder = true,
+
+                    ObjRef = objRef,
+                    DropMethod = nameof(RemoveItem),
+                });
+        }
+    }
+
+    [JSInvokable]
+    public async Task RemoveItem(DropRes res)
+    {
+        var id = Convert.ToInt32(res.ItmKey);
+        int fromContId = Convert.ToInt32(res.FromContKey);
+
+        var cont = baskets.Single(c => c.Id == fromContId);
+        var item = meals.Single(itm => itm.Id == id);
+
+        if (cont.Items.ContainsKey(item))
+        {
+            cont.Items[item]--;
+            var val = cont.Items[item];
+            if (val == 0)
+            {
+                cont.Items.Remove(item);
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task MoveItem(DropRes res)
+    {
+        var id = Convert.ToInt32(res.ItmKey);
+        var contId = Convert.ToInt32(res.ContKey);
+
+        var newCont = baskets.Single(c => c.Id == contId);
+        var item = meals.Single(itm => itm.Id == id);
+
+        if (!newCont.Items.ContainsKey(item))
+        {
+            newCont.Items.Add(item, 1);
+        }
+        else
+        {
+            newCont.Items[item]++;
+        }
+
+        StateHasChanged();
+    }
+
+    public class Basket
+    {
+        public int Id { get; set; }
+        public Dictionary<Meal, int> Items { get; set; }
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+}

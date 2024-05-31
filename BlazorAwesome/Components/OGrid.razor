@@ -1,0 +1,205 @@
+﻿@*@using System.Diagnostics*@
+@using Omu.BlazorAwesome.Components.Internal
+@using Omu.BlazorAwesome.Core
+@typeparam T
+@implements IGridStateProp<T>
+@implements IAsyncDisposable
+@inject IJSRuntime js;
+
+@{  
+    if (State is null) return;
+    State.Log += "render; ";
+    var model = State.Model;
+
+    var pagerOpt = new PagerOpt
+            {
+                Page = State.Page,
+                PageCount = model.PageCount,
+                Action = pageClick
+            };
+    //var sw = new Stopwatch();
+    //sw.Start();
+
+    string style = null;
+    string mcontStyle = null;
+    if (Opt.Height is not null)
+    {
+        style = "height:" + Opt.Height + "px";
+    }
+
+    if(Opt.ContentHeight is not null) {
+        mcontStyle = "height:"+Opt.ContentHeight + "px";
+    }
+}
+@*tree height: @model?.TreeHeight*@
+<div @ref="gdiv" style="@style" class="awe-grid awe-hh awe-ltr @Opt.CssClass">
+    @renderGroupbar()
+    <div class="awe-header" @ref="header">
+        <div class="awe-hcon">
+            <div class="awe-colw" style="@getGridContentMinWidth()" >
+                <table>
+                    <colgroup>@colgroup()</colgroup>
+                    <tbody class="awe-hrow">
+                        <tr>
+                            @for (var i = 0; i < model?.GroupsCount; i++)
+                            {
+                                <td class="awe-idn"></td>
+                            }
+                            @headerCells(model?.TreeHeight ?? 0, model?.GroupsCount ?? 0)
+                        </tr>
+                        @filterRowFragment(model)
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="awe-mcontent" style="@mcontStyle">        
+        <OLoading @ref="loadingAnim" Visible="State.IsLoading" />
+        <div class="awe-content awe-tablc o-scrollCont" @ref="cont">
+            <div class="awe-tablw" style="@getGridContentMinWidth()">
+                <table class="awe-table">
+                    <colgroup>@colgroup()</colgroup>
+                    <tbody class="awe-tbody awe-itc">
+                        <OGroupView Data="new(){ Opt = Opt, State = State }" Model="model?.Data" />
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="awe-footer">
+        <div class="awe-relbox">
+            <button @onclick="reset" type="button" class="awe-btn awe-reload" aria-label="reset">
+                <span class="awe-reload-ico"></span>
+            </button>
+            <span class="awe-gblc"></span>
+        </div>
+        <OPager Opt="pagerOpt" />
+        <ODropdownList Value="State.PageSize" ValueChanged="onPageSizeChanged" Opt="@(new (){ InLabel = OLangDict.Get(ODictKey.PageSize) +": ", Data = pageSizeData() })" TKey="int" />
+        @{
+            var colSelOpt = new DropdownOpt
+            {
+                DataFunc = async () => columnsSelectorData(),
+                MainCaptionFunc = () =>
+                {
+                    return InternUtil.ColSelCaption();
+                },
+                CssClass = "o-gcolsl"
+            };
+        }
+        <OMulticheck Value="visibleColsIds" ValueChanged="onVisibleColumnChange" Opt="colSelOpt" TKey="string" />
+        <div class="o-gpginf">@pageInfo()</div>
+    </div>
+    <div class="awe-reh" style="display:none;"><span class="awe-spindown-ico"></span><span class="awe-spinup-ico"></span></div>
+</div>
+@{
+//sw.Stop();
+}
+@*timesRendered: @timesRendered *@
+@*time: @sw.Elapsed*@
+@*<br />*@
+@*@State.Log*@
+
+@code {
+    #region stuff
+
+    private RenderFragment renderGroupbar()
+    {
+        if (!CompUtil.GridNeedsGroupbar(State)) return null;
+
+        return
+    @<div class="awe-groupbar">
+        @if (State.Groups.IsCollectionEmpty())
+            {
+                <text>@OLangDict.Get(ODictKey.GroupBar)</text>
+            }
+            else
+                @foreach (var gcol in State.Groups)
+                {
+                    {
+                        <div class="awe-col @RenderUtil.GetColumnHeaderCss(gcol)" @onclick="async () => await order(gcol)">
+                            <div class="awe-il "><i class="awe-sord"></i>@gcol.Column.Header</div>
+                            <div class="awe-il awe-remb" @onclick="async () => await remGroup(gcol)" @onclick:stopPropagation="true"><i class="awe-rem"></i></div>
+                        </div>
+                    }
+                }
+        </div>;
+    }
+
+    private RenderFragment colgroup()
+    {
+        return InternUtil.ColgroupHeader(State);
+    }
+    #endregion
+
+    private RenderFragment headerCells(int treeHeight = 0, int groupsCount = 0)
+    {
+        var colix = 0;
+        return
+        @<text>
+        @foreach (var cs in State.VisibleColumns)
+            {
+                var cspan = colix == 0 ? (treeHeight + 1 - groupsCount).ToString() : null;
+
+                <td colspan="@cspan" data-i="@(colix++)" class="awe-hc awe-rer @RenderUtil.GetColumnHeaderCss(cs)" @onclick="async () => await order(cs)">
+                    <div class="awe-col" unselectable="on">
+                        @if (cs.Column.HeaderRender is not null)
+                        {
+                            @cs.Column.HeaderRender()
+                        }
+                        else
+                        {
+                            @cs.Column.Header
+                        }
+                        <i class="awe-sord"></i>
+                    </div>
+                </td>
+            }
+        </text>;
+    }
+
+    private RenderFragment filterDropdown(ColumnState<T> col)
+    {
+        return
+            @<ODropdownList Data="(IEnumerable<KeyContent>) State.FilterData[col.Id]"
+                               Opt="filterDddOpt"
+                               TKey="object"
+                               ValueChanged="async val => await State.FilterValChange(col.Id, val)"
+                               Value="State.GetFilterValue(col.Id)" />;
+    
+    }
+
+    private RenderFragment filterRowFragment(GridModel<T> model)
+    {        
+        if (!Opt.FilterRow || !State.Load) return null;
+
+        return
+    @<text>
+        <tr class="awe-row o-frow awe-nonselect">
+                @for (var j = 0; j < model?.GroupsCount; j++)
+                {
+                    <td class="awe-idn"></td>
+                }
+                @foreach (var col in State.VisibleColumns)
+                {
+                    var filter = col.Column.GetFilter();
+                    <td>
+                        <div class="o-fcell @filter?.CssClass">
+                        @if (filter != null && filter.Render != null)//&& !State.IsLoading
+                            {                                    
+                                @filter.Render(col)
+                            }
+                            else if (State.FilterData.ContainsKey(col.Id))
+                            {
+                                <FltDropdown Opt="@(new(){ ClearBtn = true, Data = (IEnumerable<KeyContent>)State.GetFilterData(col.Id)})" ColumnState="col" GridState="State" />                                
+                            }
+                            else
+                            {
+                                <text>&nbsp;</text>
+                            }
+                        </div>
+                    </td>
+                }
+            </tr>
+        </text>;
+    }
+}

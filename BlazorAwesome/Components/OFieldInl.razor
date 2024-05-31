@@ -1,0 +1,19 @@
+﻿@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Components.Forms
+<div class="oinlc">
+    <div class="oinle">
+        @ChildContent
+        @if (For is not null)
+        {
+            <ValidationMessage For="For" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public Expression<Func<object>> For { get; set; }
+}

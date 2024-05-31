@@ -1,0 +1,78 @@
+﻿@using UiServer.Models.Site;
+@inject NavigationManager NavManager
+<div style="display:flex; margin: .8em 1em 0 0;">
+    <div style="flex: 1;">
+        <h1>@getTitle()</h1>
+    </div>
+    <div style="margin-left: 1em;">
+        <OButton OnClick="prevDemo" CssClass="awe-mbtn"><i class="arwIcoCont"><i class="o-arw left"></i></i></OButton>
+        <OButton OnClick="nextDemo" CssClass="awe-mbtn">Next<i class="arwIcoCont"><i class="o-arw right"></i></i></OButton>
+    </div>
+</div>
+<style>
+    .arwIcoCont {
+        position: relative;
+        width: 20px;
+        display: inline-block;
+        height: 9px;
+    }
+</style>
+@code {
+    protected override void OnInitialized()
+    {
+        NavManager.LocationChanged += (sender, args) =>
+        {
+            StateHasChanged();
+        };
+    }
+
+    private int getCurrentIndex(int offset = 0)
+    {
+        var key = NavManager.ToBaseRelativePath(NavManager.Uri);
+        var qi = key.IndexOf("?");
+        if (qi > -1)
+        {
+            key = key.Substring(0, qi);
+        }
+
+        if (key.Length > 0 && key.Last() == '/')
+        {
+            key = key.Substring(0, key.Length - 1);
+        }
+
+        var index = SiteMap.LinksList.FindIndex(smi => object.Equals(smi.Key, key));
+
+        if (offset != 0)
+        {
+            index += offset;
+            if (index < 0) index = SiteMap.LinksList.Count - 1;
+            if (index == SiteMap.LinksList.Count) index = 0;
+        }
+
+        return index;
+    }
+
+    private string getTitle()
+    {
+        var ix = getCurrentIndex();
+        if (ix < 0) return "Not found";
+        var kv = (SiteMapItem)(SiteMap.LinksList[ix]);
+        return kv.Title ?? kv.Content;
+    }
+
+    private void prevDemo()
+    {
+        var index = getCurrentIndex(-1);
+
+        string url = (string)SiteMap.LinksList[index].Key;
+        NavManager.NavigateTo(url);
+    }
+
+    private void nextDemo()
+    {
+        var index = getCurrentIndex(+1);
+
+        string url = (string)SiteMap.LinksList[index].Key;
+        NavManager.NavigateTo(url);
+    }
+}

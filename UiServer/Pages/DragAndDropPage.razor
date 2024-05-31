@@ -1,0 +1,80 @@
+﻿@page "/DragAndDrop"
+@inject IJSRuntime JS
+
+<div class="expl">
+    Showing how to perform Drag and Drop using the blazor awesome library.<br />
+    .o-dragItm - class is used to identify drag items,<br />
+    .o-dragCont - class is used to identity drag containers,<br />
+    data-k="key value" - attribute is used to set a key for the drag container or item<br />
+</div>
+
+<div id="dragDemoCont">
+    <div class="dragDemo">
+        @handle()
+        <DragDropAB />
+    </div>
+    <div class="dragDemo">
+        @handle()
+        <DragCardsAndItems />
+    </div>
+    <div class="dragDemo">
+        @handle()
+        <DragDropGroups />
+    </div>
+    <div class="dragDemo">
+        @handle()
+        <DragAndDropCount />
+    </div>        
+    <div class="dragDemo">
+        @handle()
+        <DragAndDropHandle />
+    </div>
+</div>
+
+<style>
+    .ddhandle {
+        padding: .5em;        
+        position: absolute;
+        right: 2em;
+    }
+
+    .dragDemo {
+        margin: 2em 0;        
+    }
+
+    .dragDemo.awe-dragging {
+        background: #fafafa;
+    }
+
+        .dragDemo.o-plh {
+            background: #f8da4e !important;
+        }
+</style>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await AweUtil.InitDragReorder(JS,
+            new()
+            {
+                FromSelector = "#dragDemoCont",
+                Selector = ".dragDemo",
+                HandleSelector = ".ddhandle",
+                ChangeDom = true
+            });
+        }
+    }
+
+    private RenderFragment handle()
+    {
+        return @<div class="ddhandle"><div class="o-cptn"><i class="o-o"></i><i class="o-o"></i><i class="o-o"></i></div></div>;
+    }
+
+    public class Demo
+    {
+        public int Id { get; set; }
+        public RenderFragment Render { get; set; }
+    }
+}

@@ -1,0 +1,268 @@
+﻿@page "/treegridinlineedit"
+
+<div class="bar">
+    <OButton OnClick="() => gopt.State.InlineEdit.Create(new TreeNodeInput())">Create</OButton>
+    <OButton OnClick="() => gopt.State.InlineEdit.CancelAll()">Cancel all</OButton>
+    <OButton OnClick="async () => await gopt.State.InlineEdit.SaveAllAsync()">Save all</OButton>
+</div>
+
+<OConfirm @ref="delConfirmPopup">
+    Are you sure you want to delete dinner: <b>@entityToDelete.Name</b> ?
+</OConfirm>
+<OGrid Opt="gopt" @ref="ogrid" />
+
+@code
+{
+    private OConfirm delConfirmPopup;
+    private TreeNode entityToDelete;
+    private OGrid<TreeNode> ogrid;
+    private GridOpt<TreeNode> gopt = new();
+    private GridState<TreeNode> state => gopt.State;
+
+    // nodes to load regardless of maxLevel,
+    // so on create/edit child node the parent node will stay expanded
+    private List<int> editedNodes = new();
+
+    // nodes for which children have been loaded
+    private Dictionary<int, TreeNode> loadedNodes = new();
+
+    // nodes for which we haven't checked for children because we've reached maxLevel
+    private Dictionary<int, TreeNode> lazyNodes = new();
+
+    // lazy loaded nodes
+    private Dictionary<int, TreeNode> loadedChildren = new();
+
+    // load nodes up to this level
+    private int maxLevel = 1;
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private void clearLoadedNodes()
+    {
+        loadedChildren.Clear();
+        lazyNodes.Clear();
+        loadedNodes.Clear();
+    }
+
+    private void initGrid()
+    {
+        gopt.KeyProp = m => m.Id;
+        gopt.Height = 350;
+        gopt.PageSize = 5;
+
+        gopt.InlineEdit = new();
+        gopt.InlineEdit.GetModel = entity => new TreeNodeInput
+            {
+                Id = entity.Id,
+                Name = entity.Name,
+                ParentId = entity.Parent?.Id
+            };
+
+        gopt.InlineEdit.SaveAll = async items =>
+        {
+            var saved = new List<string>();
+            foreach (var state in items)
+            {
+                if (await saveItemAsync(state))
+                {
+                    saved.Add(state.Key);
+                }
+            }
+
+            clearLoadedNodes();
+
+            return saved;
+        };
+
+        IQueryable<TreeNode> getQuery()
+        {
+            // not lazy load
+            if (gopt.State.LoadOpt is null || !gopt.State.LoadOpt.Partial)
+            {
+                // clear loaded items on load
+                clearLoadedNodes();
+                editedNodes.Clear();
+            }
+
+            return  Db.TreeNodes.AsQueryable();
+        }
+
+        gopt.LoadData = async () =>
+            {
+                var state = gopt.State;                
+
+                var q = getQuery();
+
+                q = await state.ApplyFilters(q);
+
+                var rootsq = q.Where(o => o.ParentId == null);
+
+                state.SetCount(rootsq.Count());
+
+                state.Items = state.QueryPage(rootsq).ToArray();
+
+                addChildrenFor(state.Items, q);
+            };
+
+        // load lazy items when clicking on expand
+        gopt.LoadLazyNodeAsync = async (item) =>
+        {            
+            lazyNodes.Remove(item.Id);
+
+            var newNodes = Db.TreeNodes.Where(o => o.ParentId == item.Id);
+
+            addNodes(loadedChildren, newNodes);
+            addChildrenFor(newNodes, Db.TreeNodes.AsQueryable());
+        };
+
+        // get child items for node if loaded
+        gopt.GetChildren = (itm, lvl) =>
+        {
+            if (lazyNodes.ContainsKey(itm.Id))
+            {
+                return Awe.LazyNode;
+            }
+
+            return loadedChildren.Values.Where(o => o.ParentId == itm.Id);
+        };
+
+        gopt.Column(new() { For = o => o.Id, Width = 100 });
+
+        gopt.Column(new() { For = o => o.Name })
+            .Editor(ORender.TextBox(gopt));
+
+        gopt.Column(new Column<TreeNode>()
+            {
+                Label = "add child",
+                Width = 120,
+                Render = itm => ORender.InlCreateButton(gopt, this, itm, () => new TreeNodeInput { ParentId = itm.Id })
+            });
+
+        gopt.Column(ORender.InlEditColumn(this, gopt));
+        gopt.Column(ORender.InlDeleteColumn(this, gopt, confirmDelete));
+    }
+
+    private void addChildrenFor(IEnumerable<TreeNode> nodes, IQueryable<TreeNode> query, int lvl = 0)
+    {
+        var nextLevelChildren = new List<TreeNode>();
+
+        foreach (var node in nodes)
+        {
+            // node children already loaded
+            if (loadedNodes.ContainsKey(node.Id))
+            {
+                continue;
+            }
+
+            // reached max level, add lazy nodes
+            else if (lvl == maxLevel && !editedNodes.Contains(node.Id))
+            {
+                if (query.Any(o => o.ParentId == node.Id))
+                {
+                    lazyNodes.Add(node.Id, node);
+                }
+            }
+            else
+            {
+                loadedNodes.Add(node.Id, node);
+                nextLevelChildren.AddRange(query.Where(o => o.ParentId == node.Id));
+            }
+        }
+
+        if (nextLevelChildren.Any())
+        {
+            addChildrenFor(nextLevelChildren, query, lvl + 1);
+            addNodes(loadedChildren, nextLevelChildren);
+        }
+    }
+
+    private async Task<bool> saveItemAsync(EditItemState<TreeNode> cx)
+    {
+        var input = (TreeNodeInput)cx.Input;
+
+        if (!cx.EditContext.Validate()) return false;
+                
+        var model = cx.IsCreate ? new TreeNode() : Db.Find<TreeNode>(input.Id);
+
+        model.Name = input.Name;
+
+        TreeNode parent = null;
+        if (input.ParentId.HasValue)
+        {
+            parent = Db.Find<TreeNode>(input.ParentId);
+
+            model.Parent = parent;
+        }
+
+        if (cx.IsCreate)
+        {
+            Db.Add<TreeNode>(model);
+        }
+        else
+        {
+            Db.Update(model);
+        }        
+
+        if (model.ParentId.HasValue)
+        {
+            // keep parent nodes expanded after rerender
+            setKeepOpenNodes(model.ParentId.Value);
+        }
+
+        return true;
+    }
+
+    // keep open edited lazy nodes
+    private void setKeepOpenNodes(int parentId)
+    {
+        void add(int id)
+        {
+            if (!editedNodes.Contains(id))
+            {
+                editedNodes.Add(id);
+            }
+
+            var node = loadedNodes.ContainsKey(id) ? loadedNodes[id] : null;
+
+            if (node is not null && node.ParentId is not null)
+            {
+                add(node.ParentId.Value);
+            }
+        }
+
+        add(parentId);
+    }
+
+    private void addNodes(Dictionary<int, TreeNode> dict, IEnumerable<TreeNode> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            dict.Add(node.Id, node);
+        }
+    }
+
+    private void confirmDelete(TreeNode item)
+    {
+        entityToDelete = item;
+        delConfirmPopup.Open(async () =>
+        {            
+            await deleteTree(item);            
+            await state.LoadAsync();
+        });
+    }
+
+    private async Task deleteTree(TreeNode item)
+    {
+        var children = Db.TreeNodes.Where(o => o.ParentId == item.Id).ToArray();
+
+        foreach (var child in children)
+        {
+            await deleteTree(child);
+        }
+
+        Db.Remove(item);
+    }
+}

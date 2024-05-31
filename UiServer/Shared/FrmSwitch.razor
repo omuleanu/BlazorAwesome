@@ -1,0 +1,29 @@
+﻿@using System.Globalization
+@using Microsoft.AspNetCore.Builder
+@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Localization
+@using Microsoft.Extensions.Options
+@inject IJSRuntime JS
+@inject NavigationManager uriHelper;
+
+<ODropdownList Value="val" TKey="string" ValueChanged="onValueChanged" Opt="@(new() { Data = items })" />
+
+@code {
+
+    private IEnumerable<KeyContent> items = new List<KeyContent>
+    {
+        new KeyContent("https://blazor.aspnetawesome.com", "Blazor"),
+        new KeyContent("https://demo.aspnetawesome.com", "ASP.net Core/MVC"),
+        new KeyContent("https://demowf.aspnetawesome.com", "ASP.net Web-Forms"),
+        new KeyContent("https://aweui.aspnetawesome.com", "aweui.js"),
+    };
+
+    private string val = "https://blazor.aspnetawesome.com";
+
+    private async Task onValueChanged(string v)
+    {
+        if (v is null || v == val) return;
+        val = v;
+        uriHelper.NavigateTo(v);
+    }
+}

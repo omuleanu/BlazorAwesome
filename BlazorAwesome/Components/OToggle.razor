@@ -1,0 +1,43 @@
+﻿@using Omu.BlazorAwesome.Components.Internal
+@using Omu.BlazorAwesome.Core
+@inherits OEditorBase<bool>
+
+<div class="awe-field awe-chk-field @fieldClass">
+    <div class="awe-display">
+        <div tabindex="0" class="o-tg @InDivClass" @onclick="InDivClick" style="@style">
+            <div class="o-tgg">
+                <div class="o-tgon"><span class="o-ccon">@Yes</span></div>
+                <div class="o-tgoff"><span class="o-ccon">@No</span></div>
+                <div class="o-tgh awe-btn o-btn"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string InDivClass => Value ? "o-chked" : "";
+
+    private string Yes => Opt?.Yes ?? OLangDict.Get(ODictKey.Yes);
+
+    private string No => Opt?.No ?? OLangDict.Get(ODictKey.No);
+
+    private string style => Opt?.Width is not null ? "width:" + Opt.Width : null;
+
+    [Parameter]
+    public ToggleOpt Opt { get; set; }
+
+    [Parameter]
+    public bool Value { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ValueChanged { get; set; }    
+
+    private async Task InDivClick()
+    {
+        if (IsDisabled) return;
+        Value = !Value;
+        await ValueChanged.InvokeAsync(Value);
+        await afterChange();
+        FieldChanged();
+    }    
+}

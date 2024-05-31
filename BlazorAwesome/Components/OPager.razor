@@ -1,0 +1,100 @@
+﻿@{
+    var currentPage = Opt.Page;
+    var pageCount = Opt.PageCount;
+}
+<div class='awe-pager'>
+    @if (pageCount > 5)
+    {
+        @RenderIconButton(1, "double left", currentPage == 1)
+        @RenderIconButton(currentPage == 1 ? 1 : currentPage - 1, "left", currentPage == 1)
+    }
+
+    @if (pageCount < 8)
+    {
+        @RenderButtons(1, pageCount, currentPage, true)
+    }
+    else if (currentPage < 5)
+    {
+        @RenderButtons(1, 5, currentPage)
+
+        @Dots()
+
+        @RenderButton(pageCount, currentPage)
+    }
+    else if (currentPage > pageCount - 4)
+    {
+        @RenderButton(1, currentPage)
+
+        @Dots()
+
+        @RenderButtons(pageCount - 4, pageCount, currentPage)
+    }
+    else
+    {
+        @RenderButton(1, currentPage)
+
+        @Dots()
+        @RenderButtons(currentPage - 1, currentPage + 1, currentPage)
+
+        @Dots()
+        @RenderButton(pageCount, currentPage)
+    }
+
+    @if (pageCount > 5)
+    {
+        @RenderIconButton(currentPage == pageCount ? pageCount : currentPage + 1, "right", currentPage == pageCount)
+        @RenderIconButton(pageCount, "double right", currentPage == pageCount)
+    }
+</div>
+
+@code {
+    [Parameter] public PagerOpt Opt { get; set; }
+
+    private RenderFragment RenderButtons(int from, int to, int page, bool alwvisib = false)
+    {
+        return
+    @<text>
+        @for (var i = from; i <= to; i++)
+        {
+            @RenderButton(i, page, alwvisib)
+        }
+    </text>
+        ;
+    }
+
+    private void onPageClick(int number)
+    {
+        Opt.Action?.Invoke(number);
+    }
+
+    private RenderFragment RenderButton(int number, int cpage, bool alwvisib = false)
+    {
+        var cssClass = "awe-btn awe-pager-btn";
+        if (cpage == number)
+        {
+            cssClass += " awe-selected";
+        }
+        else if (!alwvisib)
+        {
+            cssClass += " o-visbig";
+        }
+
+        return @<button type="button" @onclick="() => onPageClick(number)" class="@cssClass">@number</button>;
+    }
+
+    private RenderFragment RenderIconButton(int number, string iconClass, bool disabled)
+    {
+        var cssClass = "awe-btn awe-pager-btn o-vissml";
+        //if (disabled) cssClass += " awe-disabled";
+
+        return
+    @<button type="button" @onclick="() => onPageClick(number)" class="@cssClass" disabled="@disabled">
+        <span class="o-arw @iconClass" aria-hidden="true"></span>
+    </button>;
+    }
+
+    private RenderFragment Dots()
+    {
+        return @<span class="o-visbig"> ... </span>;
+    }
+}

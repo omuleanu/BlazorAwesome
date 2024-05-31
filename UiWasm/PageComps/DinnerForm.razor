@@ -1,0 +1,93 @@
+@inject CachedItems cache
+
+<div style="padding: 1em;" class="bigEditors">
+    <EditForm Model="@input" OnValidSubmit="async () => await handleValidSubmit(input)">
+        <DataAnnotationsValidator />
+        <OField For="() => input.Name">
+            <OTextbox @bind-Value="input.Name" />
+        </OField>
+        <OField For="() => input.Date">
+            <ODatePicker @bind-Value="input.Date" />
+        </OField>
+        <OField For="() => input.ChefId">
+            <ODropdownList @bind-Value="input.ChefId" Opt="new(){ Data = chefs }" />
+        </OField>
+        <OField For="() => input.MealsIds">
+            <OMultiselect @bind-Value="input.MealsIds" Opt="mealsDdOpt" />
+        </OField>
+        <OField Label="Bonus Meal" For="() => input.BonusMealId">
+            <ODropdownList @bind-Value="input.BonusMealId" Opt="mealsDdOpt" />
+        </OField>
+        <OField>
+            <OButton CssClass="awe-okbtn wbtn1" Submit="true">Save</OButton>
+            <OButton CssClass="wbtn1" OnClick="async () => await CloseFunc(null)">Cancel</OButton>            
+        </OField>
+    </EditForm>
+</div>
+@code {
+    private DinnerInput input = new();
+
+    private IEnumerable<KeyContent> meals;
+    private IEnumerable<KeyContent> chefs;
+    private DropdownOpt mealsDdOpt;
+
+    [Parameter]
+    public Dinner Entity { get; set; }
+
+    [Parameter]
+    public Func<Dinner, Task> CloseFunc { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {        
+        chefs = await cache.Chefs();
+        meals = await cache.Meals();
+
+        mealsDdOpt = new DropdownOpt() { Data = meals }.ImgItemRender();
+
+        if (Entity == null)
+        {
+            input = new DinnerInput();
+            return;
+        }
+
+        input = new DinnerInput
+            {
+                Id = Entity.Id,
+                Name = Entity.Name,
+                Date = Entity.Date,
+                ChefId = Entity.Chef?.Id,
+                MealsIds = Entity.Meals?.Select(o => o.Id),
+                BonusMealId = Entity.BonusMeal?.Id
+            };
+    }
+
+    private async Task handleValidSubmit(DinnerInput input)
+    {
+        var create = Entity is null;
+
+        var ent = create ? new() :
+            Db.Dinners
+            .First(o => o.Id == input.Id);
+
+        ent.Name = input.Name;
+        ent.Date = input.Date.Value;
+        ent.Chef = Db.Find<Chef>(input.ChefId);
+
+        // ToList req for EF
+        ent.Meals = Db.Meals
+            .Where(o => input.MealsIds.Contains(o.Id)).ToList();
+
+        ent.BonusMeal = Db.Find<Meal>(input.BonusMealId);
+
+        if (create)
+        {
+            Db.Add<Dinner>(ent);
+        }
+        else
+        {
+            Db.Update(ent);
+        }
+
+        await CloseFunc(ent);
+    }
+}

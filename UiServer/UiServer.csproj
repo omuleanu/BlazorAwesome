@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>disable</Nullable>
+		<Configurations>Debug;Release</Configurations>
+		<SignAssembly>True</SignAssembly>
+	</PropertyGroup>
+	
+	<PropertyGroup>		
+		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+	</PropertyGroup>
+	
+	<PropertyGroup>
+		<NoWarn>1998</NoWarn>
+		<RunAnalyzersDuringBuild>False</RunAnalyzersDuringBuild>
+	</PropertyGroup>
+
+	<!--<PropertyGroup>
+		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+	</PropertyGroup>-->
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="7.0.1" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.1" />		
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\BlazorAwesome\BlazorAwesome.csproj" />
+	</ItemGroup>
+</Project>

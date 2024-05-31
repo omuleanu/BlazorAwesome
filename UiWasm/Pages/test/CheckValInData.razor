@@ -1,0 +1,71 @@
+@page "/CheckValInData"
+@using Omu.BlazorAwesome.Core
+@inject CachedItems cache;
+
+<p>trend: @(trend++)</p>
+<div>
+    <OField>
+        <ODropdownList @bind-Value="input.DropdownList" Opt="new(){ Data = categories }" />
+    </OField>
+    <OField>
+        <OMultiselect @bind-Value="input.Multiselect" Opt="@(new(){ Data = categories })" />
+    </OField>
+    <OField>
+        <OMulticheck @bind-Value="input.Multicheck" Opt="@(new(){ Data = categories })" />
+    </OField>
+    <OField>
+        <ORadioList @bind-Value="input.RadioList" Opt="new(){ Data = categories }" />
+    </OField>
+    <OField>
+        <OSelect @bind-Value="input.Select" Opt="new(){ Data = categories }" />
+    </OField>
+    <OField>
+        <OCheckboxList @bind-Value="input.CheckboxList" Opt="new(){ Data = categories }" />
+    </OField>
+    <OButton OnClick="() => categories.RemoveAt(0)">Rem first data item</OButton>
+</div>
+
+<p>
+    input val:
+    <DispLog Obj="input" />
+</p>
+
+@code
+{
+    private int trend = 0;
+    private Input input = new();
+
+    private List<KeyContent> categories;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = (await cache.Categories()).ToList();
+
+        var multiv = categories.Take(2).Select(kc => (int)kc.Key).ToArray();
+        var singlev = (int)(categories.First().Key);
+
+        input = new()
+            {
+                CheckboxList = multiv,
+                RadioList = singlev,
+                Multicheck = multiv,
+                Multiselect = multiv,
+                DropdownList = singlev
+            };
+    }
+
+    class Input
+    {
+        public IEnumerable<int> CheckboxList { get; set; }
+
+        public int? RadioList { get; set; }
+
+        public int? Select { get; set; }
+
+        public int? DropdownList { get; set; }
+
+        public IEnumerable<int> Multiselect { get; set; }
+
+        public IEnumerable<int> Multicheck { get; set; }
+    }
+}

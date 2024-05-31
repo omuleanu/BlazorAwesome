@@ -1,0 +1,238 @@
+﻿@using Omu.BlazorAwesome.Core;
+@inject IJSRuntime JS;
+@typeparam TKey
+@implements IHandleEvent
+@implements IAsyncDisposable
+
+@{
+    var focKey = getAutofocusKey();
+    lastFocusedIndex = null;    
+}
+@*valClicked: @AweUtil.Serialize(valClicked)  trend: @timesRend tinit: @timesInit
+<br />*@
+@*focKey: @focKey,
+vals: @AweUtil.Serialize(selectedVals)*@
+<div class="o-itsc" @ref="itscRef" style="@Opt?.ItemsContStyle">
+    <ul class="o-mnits" tabindex="-1">
+        @if (Opt.Data != null)
+        {
+            var data = FilteredData;
+
+            var index = 0;
+            foreach (var item in data)
+            {
+                var clss = Opt.ItemClass ?? string.Empty;                
+
+                if (item != comboItem)
+                {                    
+                    if (selectedVals != null && selectedVals.Contains((TKey)item.Key))
+                    {
+                        clss += " " + (Opt.SelectedClass ?? "selected");
+                    }
+
+                    if (item != comboItem && focKey != null && Equals(focKey, item.Key))
+                    {
+                        clss += " " + focusClass;
+                        lastFocusedIndex = index;
+                    }    
+                }
+                else
+                {
+                    clss += "o-cmbi ";
+                }         
+
+                <li @key="item" class="o-itm o-v o-ditm @clss" @onclick="() => onItemClick((TKey) item.Key)" data-index="@index">
+                    @if (Opt.ItemRender is not null)
+                    {
+                        @Opt.ItemRender(item)
+                    }
+                    else
+                    {
+                        @item.Content
+                    }
+                </li>
+
+                index++;
+            }
+        }
+
+        @if (Opt.Data == null || !Opt.Data.Any())
+        {
+            <li class="o-empt">(@OLangDict.Get(ODictKey.Empty))</li>
+        }
+    </ul>
+</div>
+
+@code {
+    private int? lastFocusedIndex;
+
+    private ElementReference itscRef;
+
+    private NVal<TKey> valClicked;
+
+    private string focusClass => Opt?.FocusClass ?? "focus";
+
+    [Parameter]
+    public SListOpt Opt { get; set; }
+
+    [Parameter]
+    public IEnumerable<object> Value
+    {
+        get
+        {
+            return selectedVals;
+        }
+        set
+        {
+            selectedVals.Clear();
+            selectedVals.AddArray(value);
+        }
+    }
+
+    public void Render()
+    {
+        StateHasChanged();
+    }
+
+    //public void SetValue(IEnumerable<object> value)
+    //{
+    //    selectedVals.Clear();
+    //    selectedVals.AddArray(value);
+    //}
+
+    [Parameter]
+    public EventCallback<IEnumerable<object>> ValueChanged { get; set; }
+
+    private Func<KeyContent, string, bool> FilterPredicate = (o, str) => o.Content.Contains(str, StringComparison.InvariantCultureIgnoreCase);
+
+    KeyContent comboItem;
+
+    private IEnumerable<KeyContent> FilteredData
+    {
+        get
+        {
+            if (Opt.Data is null) return Enumerable.Empty<KeyContent>();
+
+            if (!string.IsNullOrWhiteSpace(FilterStr))
+            {
+                var data = Opt.Data.Where(o => (Opt?.FilterPredicate ?? FilterPredicate)(o, FilterStr));
+
+                if (Opt.ComboItem && !data.Any(o => string.Equals(o.Content, FilterStr, StringComparison.InvariantCultureIgnoreCase)))
+                {
+                    comboItem = new() { Key = FilterStr, Content = FilterStr };
+                    return new KeyContent[] { comboItem }.Concat(data);
+                }
+
+                return data;
+            }
+
+            return Opt.Data;
+        }
+    }
+
+    private IList<object> selectedVals { get; } = new List<object>();
+
+    public string FilterStr { get; set; } = string.Empty;
+
+    private object getAutofocusKey()
+    {
+        if (valClicked != null) return valClicked.Value;
+
+        var data = FilteredData;
+
+        if (selectedVals.Any())
+        {
+            var filtVals = selectedVals.Where(val => data.Any(d => Equals(d.Key, val))).ToArray();
+
+            if (filtVals.Length == 1)
+            {
+                return filtVals.First();
+            }
+        }
+
+        return (data is not null && data.Any() ? data.First().Key : default);
+    }
+
+    private async Task onItemClick(TKey key)
+    {
+        if (Opt?.Disabled == true) return;
+
+        FilterStr = string.Empty;
+
+        var unselect = false;
+
+        if (Opt.SingleSelect)
+        {
+            selectedVals.Clear();
+        }
+        else
+        {
+            for (var i = 0; i < selectedVals.Count; i++)
+            {
+                var val = selectedVals[i];
+                if (Equals(key, val))
+                {
+                    selectedVals.RemoveAt(i);
+                    unselect = true;
+                }
+            }
+        }
+
+        valClicked = new(key);
+
+        if (!unselect)
+        {
+            selectedVals.Add(key);
+        }
+
+        await ValueChanged.InvokeAsync(selectedVals);
+
+        if (Opt?.OnItemSelected is not null)
+        {
+            await Opt?.OnItemSelected(new ItemSelectedPrm
+                {
+                    UserClick = true,
+                    Value = selectedVals.ToArray()
+                });
+        }
+
+        StateHasChanged();
+    }
+
+    private bool frHappened;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            frHappened = true;
+            await JS.InvokeVoidAsync(CompUtil.AweJs("olist"),
+            new
+            {
+                div = itscRef,
+                opener = Opt.Opener,
+                fcls = Opt.FocusClass,
+                scls = Opt.SelectedClass,
+                hovFocus = Opt.ItemHoverFocus
+            });
+        }
+
+        // scroll to last value clicked
+        await JS.InvokeVoidAsync(CompUtil.AweJs("olist"), new { div = itscRef, index = lastFocusedIndex, focus = 1 });
+
+        //await JS.InvokeVoidAsync("console.log", "afterRender valClicked", valClicked, "lastIndex", lastFocusedIndex, "fr", firstRender);
+        valClicked = null;
+    }
+
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object arg)
+    {
+        return callback.InvokeAsync(arg);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (frHappened)
+        {
+            await CompUtil.TryDestroy(JS, itscRef);
+        }
+    }
+}

@@ -1,0 +1,125 @@
+@using Omu.BlazorAwesome.Core
+@inject IDbContextFactory<MyContext> cxf
+
+<div class="bar">
+    <OButton OnClick="createDinner">Create</OButton>
+</div>
+<OGrid Opt="gopt" @ref="ogrid" />
+
+@code
+{
+    OGrid<Dinner> ogrid;
+
+    private GridOpt<Dinner> gopt = new();
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private void createDinner()
+    {
+        ogrid.State.Nesting.ToggleOpen(new() { Key = "new", IsTop = true, Render = getEditNestContent(null, "new") });
+    }
+
+    private RenderFragment getEditNestContent(Dinner entity, object key = null)
+    {
+        async Task closeForm(Dinner ent)
+        {
+            ogrid.State.Nesting.Close(key ?? entity.Id);
+
+            if (ent is null)
+            {
+                // cancel button
+                ogrid.State.Render();
+                return;
+            }
+
+            await gopt.State.LoadAsync(new() { Partial = true });// partial will leave other nests open
+
+            AweUtil.FlashRow(gopt, ent.Id);
+        }
+
+        return @<DinnerForm Entity="entity" CloseFunc="closeForm" />;
+    }
+
+    private RenderFragment getDeleteNestContent(Dinner entity)
+    {
+        async Task deleteDinner()
+        {
+            using (var mcx = cxf.CreateDbContext())
+            {
+                mcx.Remove<Dinner>(entity);
+                await mcx.SaveChangesAsync();
+            }
+
+            ogrid.State.Nesting.Close(entity);
+            await ogrid.State.LoadAsync();
+        }
+
+        return
+    @<div style="padding: 1.5em;">
+        Are you sure ?
+        <div class="bar" style="margin-top:1em;">
+            <OButton OnClick="deleteDinner" CssClass="wbtn1 awe-okbtn">@OLangDict.Get(ODictKey.Yes)</OButton>
+            <OButton CssClass="wbtn1" OnClick="() => ogrid.State.Nesting.Close(entity.Id)">@OLangDict.Get(ODictKey.No)</OButton>
+        </div>
+    </div>
+    ;
+    }
+
+    private void initGrid()
+    {
+        gopt.KeyProp = m => m.Id;
+
+        gopt.EFData(cxf, cx => cx.Dinners
+            .Include(p => p.Meals)
+            .Include(p => p.Chef)
+            .Include(p => p.BonusMeal));
+
+        gopt.Columns = new[] {
+            new Column<Dinner>()
+            {
+                For = o => o.Id,
+                Width = 100
+            },
+            new Column<Dinner>
+            {
+                Width = 100,
+                Label = "edit",
+                Render = itm =>
+    @<OButton OnClick="@(() => ogrid.State.Nesting.ToggleOpen(new(){ Key = itm.Id, Render = getEditNestContent(itm)}))">Edit</OButton>
+            },
+            new Column<Dinner>
+            {
+                Width = 100,
+                Render = itm =>
+    @<OButton OnClick="@(() => ogrid.State.Nesting.ToggleOpen(new(){ Key = itm.Id, Render = getDeleteNestContent(itm), Name = "delete"}))">Delete</OButton>
+            },
+            new Column<Dinner>
+            {
+                For = o => o.Name,
+                Grow = 1.2
+            },
+            new Column<Dinner>
+            {
+                For = o => o.Date,
+            },
+            new Column<Dinner>
+            {
+                Header = "Chef"
+            }
+            .For(m => m.Chef.FirstName, m => m.Chef.LastName),
+            new Column<Dinner>
+            {
+                Header = "Meals",
+                GetStr = o => string.Join(", ", o.Meals.Select(m => m.Name))
+            },
+            new Column<Dinner>
+            {
+                Header = "Bonus Meal",
+                For = o => o.BonusMeal.Name
+            }
+    };
+    }
+}

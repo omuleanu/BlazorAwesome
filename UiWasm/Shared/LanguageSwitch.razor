@@ -1,0 +1,49 @@
+﻿@using System.Globalization
+@using Microsoft.AspNetCore.Builder
+@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Localization
+@using Microsoft.Extensions.Options
+@inject IJSRuntime JS
+@inject NavigationManager uriHelper;
+
+<ODropdownList Value="Culture" ValueChanged="onValueChanged" TKey="string" Opt="new(){ OpenOnHover = true, Data = cultureItems }" />
+
+@code {
+    [Inject] public IOptions<RequestLocalizationOptions> LocOptions { get; set; }
+
+    private IEnumerable<KeyContent> cultureItems;
+
+    private string Culture { get; set; } = "en";
+
+    private async Task onValueChanged(string name)
+    {
+        if (name is null || name == Culture) return;
+
+        await JS.InvokeVoidAsync("site.setLSVal", "lang", name);
+
+        uriHelper.NavigateTo(uriHelper.Uri, forceLoad: true);
+    }
+
+    protected override void OnInitialized()
+    {
+        var culture = CultureInfo.CurrentCulture.Name;
+
+        if (culture.Contains("-"))
+        {
+            culture = culture.Split("-")[0];
+        }
+
+        if (Globals.SupportedCultures.Select(o => o.Name).Contains(culture))
+        {
+            Culture = culture;
+        }
+        
+        cultureItems = Globals.SupportedCultures
+            .Select(c => new KeyContent(c.Name, Globals.LangNames[c.NativeName])).ToList();
+    }
+
+    private string capitalFirst(string text)
+    {
+        return char.ToUpper(text[0]) + text.Substring(1);
+    }
+}

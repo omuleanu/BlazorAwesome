@@ -1,0 +1,67 @@
+﻿@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+<div class="efield">
+    <div class="elabel">@LabelGet</div>
+    <div class="einput">
+        @ChildContent
+    </div>
+    @if (For is not null && EditContext is not null)
+    {
+        <ValidationMessage For="For" />
+    }
+</div>
+
+@code {
+    
+    [Parameter]
+    public string Label { get; set; }
+
+    private string LabelGet => Label ?? (For != null ? getLabelName(For) : string.Empty);
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public Expression<Func<object>> For { get; set; }
+
+    [CascadingParameter]
+    public EditContext EditContext { get; set; }
+
+    private string displayName(string property)
+    {
+        if (EditContext is null || EditContext.Model is null) return property;
+
+        var prop = EditContext.Model.GetType().GetProperty(property);
+
+        var attrs = prop.GetCustomAttributes(true);
+        var display = attrs.FirstOrDefault(o => o.GetType() == typeof(DisplayAttribute));
+
+        if (display != null)
+        {
+            var dispAttr = display as DisplayAttribute;
+            return dispAttr.GetName();
+        }
+
+        return null;
+    }
+
+    private string getLabelName(Expression<Func<object>> expr)
+    {
+        var name = getExprName(expr);
+        return displayName(name) ?? name;
+    }
+
+    private string getExprName(Expression<Func<object>> expr)
+    {
+        switch (expr.Body)
+        {
+            case MemberExpression membExpr:
+                return membExpr.Member.Name;
+            case UnaryExpression unExpr when unExpr.Operand is MemberExpression membExpr:
+                return membExpr.Member.Name;
+            default:
+                throw new NotImplementedException(expr.GetType().ToString());
+        }
+    }
+}

@@ -1,0 +1,360 @@
+﻿@inject IJSRuntime JS
+@typeparam TValue
+@using System.Globalization
+@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Components.Forms
+@using Omu.BlazorAwesome.Components.Internal
+
+@implements IHandleEvent
+@implements IDisposable
+@inherits OEditorBase<TValue>
+<div class="awe-txt-field awe-field o-txtf o-cmped @fieldClass @ClearFieldClass">
+    <div class="awe-elcont">
+        <input @onfocusin="OnFocusin"
+               @onfocusout="OnFocusout"
+               @ref="editor"
+               value="@InputVal"
+               @onchange="onInputValChange"
+               type="text"
+               class="@inputClass"
+               disabled="@(IsDisabled)"
+               placeholder="@Opt?.Placeholder"
+               size="1" autocomplete="off" />
+        @if (hasSpinners)
+        {
+            <div class="awe-spincont">
+                <button type="button" tabindex="-1" class="awe-btn awe-spinbtn awe-spinup" disabled="@IsDisabled">
+                    <span class="awe-spinup-ico"></span>
+                </button>
+                <button type="button" tabindex="-1" class="awe-btn awe-spinbtn awe-spindown" disabled="@IsDisabled">
+                    <span class="awe-spindown-ico"></span>
+                </button>
+            </div>
+        }
+        @if (HasClearBtn)
+        {
+            <button class="awe-btn awe-clrbtn" type="button" @onclick="clearValue">
+                <span class="awe-icon awe-icon-x"></span>
+            </button>
+        }
+    </div>
+
+</div>
+@*@timesRendered
+@flag;*@
+@*strValue: @strValue value: @Value
+newOpFlag: @newOpFlag*@
+@code {
+    private DotNetObjectReference<ONumericInput<TValue>> objRef;
+    private ElementReference editor;    
+    protected string strValue = string.Empty;
+    private string separator = CompUtil.DecimalSeparator();
+    private bool inputFocused;
+    private bool isNumeric;
+    private ushort decimals => Opt != null ? Opt.Decimals : default(ushort);
+    private bool allowDecimals;
+    private float step = 1;
+
+    protected bool HasClearBtn => CompUtil.HasClearButton(Opt, OContext);
+
+    protected string ClearFieldClass => HasClearBtn ? Consts.HasClrClass : null;
+
+    protected override IEditorOpt getOpt()
+    {
+        return Opt;
+    }
+
+    protected override string fieldClass
+    {
+        get
+        {
+            var res = base.fieldClass;
+
+            if (hasSpinners)
+            {
+                res += " awe-hasspn";
+            }
+
+            return res;
+        }
+    }
+
+    protected string inputClass
+    {
+        get
+        {
+            var res = "awe-display awe-txt";
+            if (hasSpinners) res += " awe-hasSpinners";
+            if (inputFocused) res += " awe-aedit";
+            return res;
+        }
+    }
+
+    private async Task onInputValChange(ChangeEventArgs args)
+    {
+        var value = args.Value.ToString();
+
+        if (!isNumeric || string.IsNullOrEmpty(value))
+        {
+            strValue = value;
+            await ValueChanged.InvokeAsync(Value);
+            await afterChange();
+            FieldChanged();
+            return;
+        }
+
+        var initVal = value;
+
+        if (BindConverter.TryConvertTo<TValue>(value, CompUtil.CurrentCulture(), out var nval))
+        {
+            var ndec = Convert.ToDecimal(nval);
+            ndec = constrain(ndec);
+            value = decToStr(ndec);
+        }
+        else
+        {
+            value = string.Empty;
+        }
+
+        if (value != strValue || initVal != strValue)
+        {
+            strValue = value;
+            await ValueChanged.InvokeAsync(Value);
+            await afterChange();
+
+            StateHasChanged();
+
+            FieldChanged();
+        }
+    }
+
+    protected string InputVal
+    {
+        get
+        {
+            if (inputFocused) return strValue;
+            return Opt?.FormatFunc is not null ? Opt.FormatFunc(Value) : strValue;
+        }
+    }
+
+    [Parameter]
+    public NumericInputOpt<TValue> Opt { get; set; }
+
+    private string decToStr(decimal number)
+    {
+        var str = number.ToString();
+
+        if (decimals > 0)
+        {
+            str = CompUtil.RemExtraDecimals(str, separator, decimals);
+        }
+
+        return str;
+    }
+
+    private decimal constrain(decimal number)
+    {
+        if (Opt is null) return number;
+
+        if (Opt.UseMin)
+        {
+            var dmin = Convert.ToDecimal(Opt.Min);
+            if (number < dmin) number = dmin;
+        }
+
+        if (Opt.UseMax)
+        {
+            var dmax = Convert.ToDecimal(Opt.Max);
+            if (number > dmax) number = dmax;
+        }
+
+        return number;
+    }
+
+    [Parameter]
+    public TValue Value
+    {
+        get
+        {
+            if (BindConverter.TryConvertTo<TValue>(strValue, System.Globalization.CultureInfo.CurrentCulture, out var val))
+            {
+                return val;
+            }
+
+            strValue = string.Empty;
+            return default(TValue);
+        }
+
+        set
+        {
+            if (value is null)
+            {
+                this.strValue = string.Empty;
+                return;
+            }
+
+            if (allowDecimals && decimals > 0)
+            {
+                var dec = Convert.ToDecimal(value);
+                this.strValue = decToStr(dec);
+            }
+            else
+            {
+                this.strValue = value.ToString();
+            }
+        }
+    }
+
+    [Parameter]
+    public EventCallback<TValue> ValueChanged { get; set; }
+
+    private bool hasSpinners
+    {
+        get
+        {
+            if (Opt != null && Opt.ShowSpinners.HasValue) return Opt.ShowSpinners.Value;
+
+            return isNumeric;
+        }
+    }
+
+    private int newOpFlag;
+
+    [JSInvokable]
+    public async Task Inc(int op)
+    {
+        var value = strValue;
+        var initVal = value;
+
+        TValue nval;
+
+        var nvalParsed = false;
+        // copied from InputVal.set
+        if (string.IsNullOrEmpty(value))
+        {
+            nval = default(TValue);
+            nvalParsed = true;
+        }
+        else if (BindConverter.TryConvertTo<TValue>(value, CompUtil.CurrentCulture(), out nval))
+        {
+            nvalParsed = true;
+        }
+
+        if (nvalParsed)
+        {
+            var ndec = Convert.ToDecimal(nval);
+
+            if (op == 1)
+            {
+                ndec += (decimal)step;
+            }
+            else
+            {
+                ndec -= (decimal)step;
+            }
+
+            ndec = constrain(ndec);
+            value = decToStr(ndec);
+        }
+        else
+        {
+            value = string.Empty;
+        }
+
+        if (value != strValue || initVal != strValue)
+        {
+            strValue = value;
+
+            StateHasChanged();
+
+            newOpFlag++;
+            var myOpFlag = newOpFlag;
+
+            await Task.Delay(300);
+
+            if (myOpFlag != newOpFlag) return;
+
+            await ValueChanged.InvokeAsync(Value);
+            await afterChange();
+            FieldChanged();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        var vtype = typeof(TValue);
+
+        var nltype = Nullable.GetUnderlyingType(vtype);
+        if (nltype is not null)
+        {
+            vtype = nltype;
+        }
+
+        var ints = new[] { typeof(short), typeof(int), typeof(long) };
+        var floats = new[] { typeof(float), typeof(double), typeof(decimal) };
+
+        if (ints.Contains(vtype) || floats.Contains(vtype))
+        {
+            isNumeric = true;
+        }
+
+        if (floats.Contains(vtype))
+        {
+            allowDecimals = true;
+        }
+
+        if (Opt != null)
+        {
+            step = Opt.Step;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && isNumeric)
+        {
+            objRef = DotNetObjectReference.Create(this);
+            await JSUtil.InvokeVoidAsync(JS, CompUtil.AweJs("numspn"), new
+            {
+                elm = editor,
+                num = isNumeric,
+                ss = hasSpinners,
+                stp = step,
+                dec = allowDecimals ? (ushort?)decimals : null,
+                sep = separator,
+                oref = objRef
+            });
+        }
+    }
+
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object arg)
+    {
+        return callback.InvokeAsync(arg);
+    }
+
+    private void OnFocusin()
+    {
+        inputFocused = true;
+        StateHasChanged();
+    }
+
+    private void OnFocusout()
+    {
+        inputFocused = false;
+        StateHasChanged();
+    }
+
+    private async Task clearValue()
+    {
+        if (strValue == string.Empty) return;
+        strValue = string.Empty;
+        await ValueChanged.InvokeAsync(Value);
+        await afterChange();
+        FieldChanged();
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+}

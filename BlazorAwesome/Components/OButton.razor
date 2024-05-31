@@ -1,0 +1,29 @@
+﻿@if (visible)
+{
+    <button type="@(Submit ? "submit": "button")" class="awe-btn @CssClass" @onclick="OnClick" @ref="ElmRef">
+        @ChildContent
+    </button>
+}
+
+@code {
+    private bool visible = true;
+
+    public ElementReference ElmRef { get; set; }
+
+    [Parameter]
+    public string CssClass { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    [Parameter]
+    public bool Submit { get; set; }
+
+    public void ToggleHide()
+    {
+        visible = !visible;
+    }
+}

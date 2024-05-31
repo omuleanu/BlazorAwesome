@@ -1,0 +1,84 @@
+@page "/gridselect"
+@using Omu.BlazorAwesome.Core
+<OGrid Opt="gopt" />
+<p>
+    selected:
+    <ORepeater Items="selected">
+        @context.Item
+        @if (!context.IsLast)
+            @(", ")
+
+    </ORepeater>
+</p>
+
+@code
+{
+    private GridOpt<Dinner> gopt = new();
+
+    List<int> selected = new();
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private void initGrid()
+    {
+        gopt.Height = 350;
+        gopt.KeyProp = m => m.Id;
+        gopt.GetQuery = () => Db.Dinners.AsQueryable();
+
+        gopt.RowClickFunc = k =>
+        {
+            var id = Convert.ToInt32(k);
+            if (selected.Contains(id))
+            {
+                selected.Remove(id);
+            }
+            else
+            {
+                selected.Add(id);
+            }
+
+            StateHasChanged();
+        };
+
+        gopt.RowClassFunc = itm =>
+        {
+            if (selected.Contains(itm.Id))
+            {
+                return "awe-selected";
+            }
+
+            return null;
+        };
+
+        // clear selection on load (new page, sort etc.)
+        gopt.BeginLoadFunc = () =>
+        {
+            selected.Clear();
+            StateHasChanged();
+        };
+
+        gopt.Columns = new[] {
+            new Column<Dinner>()
+            {
+                For = o => o.Id,
+                Width = 100
+            },
+            new Column<Dinner>
+            {
+                For = o => o.Name,
+                Grow = 1.2
+            },
+            new Column<Dinner>
+            {
+                For = o => o.Date,
+            },
+            new Column<Dinner>
+            {
+                Header = "Chef"
+            }
+            .For(m => m.Chef.FirstName, m => m.Chef.LastName)
+    };
+    }
+}

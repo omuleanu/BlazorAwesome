@@ -1,0 +1,64 @@
+﻿@using System.Globalization
+@using Microsoft.AspNetCore.Builder
+@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Localization
+@using Microsoft.Extensions.Options
+@inject IJSRuntime JS
+@inject NavigationManager uriHelper;
+
+<ODropdownList Value="val" TKey="string" ValueChanged="onValueChanged"
+               Opt="@(new() { OpenOnHover = true, Data = Globals.Themes, InLabel = "Theme: ", ItemFunc = itemFunc, CaptionFunc = itemFunc })" />
+
+@code {
+
+    /// <summary>
+    /// Initial theme
+    /// </summary>
+    [CascadingParameter(Name = "Theme")]
+    public string Theme
+    {
+        set
+        {
+            if (value is not null) val = value;
+        }
+    }
+
+    private string val = Globals.PickedTheme ?? Globals.DefaultTheme;
+
+    private async Task onValueChanged(string v)
+    {
+        if (v is null || v == val) return;
+        val = v;
+        await JS.InvokeVoidAsync("site.changeTheme", v);
+    }
+
+    private RenderFragment itemFunc(KeyContent itm)
+    {
+        var themeItem = (ThemeItem)itm;
+
+        return@<text>
+        <i class="theme-colors">
+        @foreach (var color in themeItem.Colors)
+        {
+            <i class="color-box" style="background-color:@color"></i>
+        }
+        </i>
+        @themeItem.Key
+        </text>;
+    }
+
+    /*
+     * itmTheme: function (itm) {
+            var res = '<i class="theme-colors">';
+
+            awef.loop(itm.colors, function (color) {
+                res += '<i class="color-box"style="background-color: ' + color + '"></i>';
+            });
+
+            res += '</i>';
+
+            return res + itm.k;
+     },
+    *
+    */
+}

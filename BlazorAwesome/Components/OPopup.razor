@@ -1,0 +1,174 @@
+﻿@inject IJSRuntime JS;
+@implements IDisposable
+@implements IAsyncDisposable
+
+@*open: @isOpen conentPres: @contentPresent*@
+@if (contentPresent)
+{
+    <div class="o-pwrap" style="display: none;">
+        <div class="o-pmodal"></div>
+        @if (Opt != null && Opt.Menu)
+        {
+            <div class="o-pu @Opt.PopupClass" tabindex="-1" @ref="popupRef">
+                @ChildContent
+            </div>
+        }
+        else
+        {
+            <div class="o-pmc o-pu @Opt?.PopupClass" tabindex="-1">
+                <div class="o-phdr"><div class="o-ptitl">@(Opt?.Title)&nbsp;</div><span class="o-cls" aria-label="close">×</span></div>
+                <div @ref="popupRef" class="awe-popup o-pc o-fpp">
+                    <div class="awe-scon">
+                        @ChildContent
+                    </div>
+                </div>
+
+                @if (hasFooter)
+                {
+                    <div class="o-pbtns">
+                        @Footer
+                        @*@if (Opt?.Buttons is not null)
+                        {
+                            @foreach (var btn in Opt.Buttons)
+                            {
+                                var cls = "o-pbtn ";
+                                cls += btn.Primary ? "awe-okbtn " : "awe-sbtn ";
+
+                                <OButton CssClass="@cls" OnClick="btn.Click">@btn.Content</OButton>
+                            }
+                        }*@
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private ElementReference popupRef;
+
+    private bool isOpen;
+    private bool contentPresent;
+
+    private Func<Task> needsToOpen;
+
+    DotNetObjectReference<OPopup> objRef;
+
+    private DotNetObjectReference<OPopup> getObjRef()
+    {
+        if (objRef is null)
+        {
+            objRef = DotNetObjectReference.Create(this);
+        }
+
+        return objRef;
+    }
+
+    public bool IsOpen => isOpen;
+
+    public ElementReference PopupRef => popupRef;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public RenderFragment Footer { get; set; }
+
+    [Parameter]
+    public PopupOpt Opt { get; set; }
+
+    private bool hasFooter => Footer is not null;
+
+    public void Open(PopupOpenPrm prm = null)
+    {
+        if (isOpen) return;
+        isOpen = true;
+
+        contentPresent = true;
+
+        needsToOpen = async () =>
+        {
+            needsToOpen = null;
+
+            var opener = prm?.Opener;
+
+            //await Task.Delay(300);
+
+            await JSUtil.InvokeVoidAsync(JS, CompUtil.AweJs("openBz"), new
+            {
+                div = popupRef,
+                pwrp = 1,
+                opener,
+                dropdown = Opt?.Dropdown,
+                noret = true,
+                menu = Opt?.Menu,
+                modal = Opt?.Modal,
+                width = Opt?.Width,
+                height = Opt?.Height,
+                outClickClose = Opt?.OutClickClose,
+                nf = Opt?.NoFocus,
+                noCloseFocus = Opt?.NoCloseFocus,
+                objRef = getObjRef()
+            });
+
+            if (Opt?.OnOpen is not null)
+            {
+                await Opt.OnOpen();
+            }
+        };
+
+        StateHasChanged();
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Opt?.AutoOpen is true)
+        {
+            Open();
+        }
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (needsToOpen != null)
+        {
+            await needsToOpen();
+        }
+    }
+
+    public async Task CloseAsync()
+    {
+        if (isOpen && contentPresent)
+        {
+            await JS.InvokeVoidAsync(CompUtil.AweJs("close"), new { div = popupRef });
+        }
+    }
+
+    [JSInvokable]
+    public void SetClosed()
+    {
+        if (Opt?.OnClose != null) Opt.OnClose.Invoke();
+        isOpen = false;
+        contentPresent = false;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();        
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await CloseAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // ignore
+        }
+    }
+}

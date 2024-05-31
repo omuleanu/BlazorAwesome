@@ -1,0 +1,18 @@
+﻿@using System.Reflection;
+@GetAbout()
+@code {   
+
+    public static string GetAbout()
+    {
+        var anm = Assembly.GetExecutingAssembly().GetName();
+
+        var prod = ((AssemblyProductAttribute)Attribute.GetCustomAttribute(
+                    Assembly.GetExecutingAssembly(), typeof(AssemblyProductAttribute), false))
+                   .Product;
+
+        string title = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyTitleAttribute>().Title;
+        var about = title + " " + anm.Version;
+
+        return about;
+    }
+}

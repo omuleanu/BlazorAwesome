@@ -1,0 +1,191 @@
+﻿@using Omu.BlazorAwesome.Core
+@typeparam TKey
+@inherits DropdownBase
+@implements IDisposable
+
+@*@implements IAsyncDisposable*@
+@inject IJSRuntime JS
+@{
+    timesRend++;
+    string displayClass = string.Empty;
+
+    if (combo)
+    {
+        displayClass = "o-cbxdisp";
+    }
+    else if (multiselect)
+    {
+        displayClass = "o-mltsl";
+    }
+
+    var visibOnlyWhenFullsClass = "o-visfls";
+
+    if(!multiselect && !combo) visibOnlyWhenFullsClass = null;
+
+    var selectedItems = GetSelectedItems();
+    var debug = false;
+    var style = Opt?.Width is not null ? "width:" + Opt.Width + ";" : null;
+    var fieldClass2 = "o-cmped";
+    if(multiselect || combo)
+    {
+        fieldClass2 += " o-txtf";
+    }
+}
+@*<span>@log</span>*@
+<div @ref="dropdownField" class="awe-field o-field awe-ajaxradiolist-field @fieldClass2 @fieldClass @typeClass" style="@style">    
+    @if (State?.IsLoading == true)
+    {
+        <span class="awe-ldgcnt"><div class="awe-loading"><span></span></div></span>
+    }
+    <div class="awe-display @displayClass" style="@style">
+        <div class="o-dd">
+            <div class="o-disp o-ldngp">
+                @if (combo)
+                {
+                    <div class="o-cmbloadwrp">
+                        <input @ref="txtSearch" disabled="@IsDisabled"
+                           type="text" class="awe-txt o-cbxt o-src" size="1" autocomplete="off" placeholder="@OLangDict.Get(ODictKey.PleaseSelect)"
+                           value="@comboSearchVal"
+                           @oninput="EventUtil.AsNonRenderingEventHandler<ChangeEventArgs>(onComboInput)"
+                           @onchange="onComboChange"
+                           @onkeydown="EventUtil.AsNonRenderingEventHandler<KeyboardEventArgs>(comboTxtSearchKeyDown)">
+                        <OLoadingMini @ref="loadingMiniInField" />
+                    </div>
+                    <button type="button" class="o-cbxbtn o-ddbtn awe-btn o-btn" aria-label="open" tabindex="-1" @onclick="openBtnClick" disabled="@IsDisabled">
+                        <div class="o-slbtn"><i class="o-caret"></i></div>
+                    </button>
+                }
+                else if (multiselect)
+                {
+                    var i = 0;
+                    <div @ref="multiCont" class="o-mltic" @onclick="openBtnClick" disabled="@IsDisabled">
+                        @foreach (var itm in selectedItems)
+                        {
+                            <button type="button" class="o-mlti awe-il awe-btn" data-i="@i" disabled="@IsDisabled" tabindex="-1">
+                                <span class="o-mltcptn">@renderItemCaption(itm)</span>
+                                <span class="o-mltrem" aria-label="remove" @onclick="() => removeValueBtn((TKey)itm.Key)" @onclick:stopPropagation="true">×</span>
+                            </button>
+                            i++;
+                        }
+                        @if (!values.Any())
+                        {
+                            <span class="o-cptn" style="display:none;">@pleaseSelect</span>
+                        }
+                        <input @ref="txtSearch" type="text" class="o-src awe-il awe-txt" autocomplete="off" style="width: 10px" disabled="@IsDisabled"
+                           @bind="FilterStr" @bind:event="oninput"
+                           @onkeydown="EventUtil.AsNonRenderingEventHandler<KeyboardEventArgs>(multiTxtSearchKeyDown)" />
+                    </div>
+                    <OLoadingMini @ref="loadingMiniInField"/>
+                }
+                else
+                {
+                    <button @ref="btn" type="button" class="o-ddbtn o-btn awe-btn" aria-label="open" @onclick="openBtnClick" disabled="@IsDisabled">
+                        <div class="o-cptn">
+                            @if (getData() is null)
+                            {
+                                <div>&nbsp;</div>
+                            }
+                            else if (Opt?.MainCaptionFunc != null)
+                            {
+                                @Opt.MainCaptionFunc()
+                            }
+                            else
+                            {
+                                @renderCaption()
+                            }
+                        </div>
+                        <div class="o-slbtn"><i class="o-caret"></i></div>
+                    </button>
+                }
+                @if (HasClearBtn)
+                {
+                    <button type="button" class="awe-clrbtn awe-btn o-btn" aria-label="clear value" @onclick="clearValue" disabled="@IsDisabled">
+                        <span class="awe-icon awe-icon-x"></span>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+    <OPopup @ref="popup" Opt="ddpopupOpt()">        
+        <div class="o-srcc o-ldngp @visibOnlyWhenFullsClass">
+            <OWrap OnAfterRenderFunc="srcTxtAfterRender">
+                <input @bind="FilterStr" @bind:event="oninput" @ref="txtSearch2"
+                    type="text" class="o-src awe-txt" placeholder="@OLangDict.Get(ODictKey.Search)..." size="1">
+            </OWrap>
+            <OLoadingMini @ref="loadingMiniInPopup" />
+        </div>        
+        @if (Opt?.SearchFunc is not null)
+        {
+            <div class="o-srcldmsg">@OLangDict.Get(ODictKey.SearchToLoadMoreResults)</div>
+        }
+        <OSList @ref="selectList" Value="values" TKey="TKey"
+                Opt="@(new(){
+                Data = getData(),
+                SingleSelect = !multiple,
+                Opener = dropdownField,
+                ItemRender = Opt?.ItemFunc,
+                OnItemSelected = onItemSelected,
+                ItemHoverFocus = true,
+                ComboItem = combo
+                //ItemsContStyle = "max-height: 300px"
+                })" />
+    </OPopup>
+</div>
+@if (debug)
+{
+    <text>timesRend: <span style="min-width: 1.5em; display: inline-block;">@timesRend</span>vals:</text>
+    @foreach (var selectedItem in selectedItems)
+    {
+        <text>@selectedItem.Content,</text>
+    }
+    {
+        @AweUtil.Serialize(values.ToArray())
+    }
+}
+
+@code {
+
+    // render caption for dropdown/multichk
+    private RenderFragment renderCaption()
+    {
+        var items = GetSelectedItems();
+        KeyContent match = null;
+        string strCaption = pleaseSelect;
+
+        if (values.Count == 1)
+        {
+            var val0 = values[0];
+            match = getData().FirstOrDefault(o => Equals(o.Key, val0));
+
+            if (match is null) strCaption = val0.ToString();
+
+            //res = match != null ?  match.Content : val0.ToString();
+        }
+        else if (values.Count > 1)
+        {
+            strCaption = values.Count + " " + OLangDict.Get(ODictKey.selected);
+        }
+        else
+        {
+            match = getData().FirstOrDefault(o => Equals(o.Key, null));
+        }
+
+        //if (Opt?.CaptionFunc is not null && match is not null)
+        //{
+        //    caption = Opt.CaptionFunc(match);
+        //}
+
+        RenderFragment caption = match is not null ? renderItemCaption(match) : @<text>@strCaption</text>;
+        return @<text>@Opt?.InLabel @caption</text>;
+    }
+
+    private RenderFragment renderItemCaption(KeyContent match)
+    {
+        if (Opt?.CaptionFunc is not null && match is not null)
+        {
+            return Opt.CaptionFunc(match);
+        }
+
+        return @<text>@match.Content</text>;
+    }
+}

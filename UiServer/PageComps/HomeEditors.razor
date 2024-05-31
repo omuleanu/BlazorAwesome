@@ -1,0 +1,112 @@
+﻿@inject CachedItems cache
+<div style="padding: 1em;">
+    <div class="example cbl">
+        <OField For="() => input.NumericInput">
+            <ONumericInput @bind-Value="input.NumericInput" />
+        </OField>
+        <OField For="() => input.DatePicker">
+            <ODatePicker @bind-Value="input.DatePicker" />
+        </OField>
+        <OField For="() => input.DropdownList">
+            <ODropdownList @bind-Value="input.DropdownList" Opt="ddOpt" />
+        </OField>
+        <OField For="() => input.Multicheck">
+            <OMulticheck @bind-Value="input.Multicheck" Opt="ddOpt" />
+        </OField>
+        <OField For="() => input.Combobox">
+            <OCombobox @bind-Value="input.Combobox" Opt="ddOpt" />
+        </OField>
+    </div>
+    <CascadeRadioList />
+    <div class="example cbl toplabel">
+        <div class="ib arl">
+            <OField For="() => input.Toggle">
+                <OToggle @bind-Value="input.Toggle" />
+            </OField>
+        </div>
+        <div class="ib arl">
+            <OField For="() => input.Checkbox">
+                <OCheckbox @bind-Value="input.Checkbox" />
+            </OField>
+        </div>        
+    </div>
+    <div class="example toplabel">
+        <div class="ib arl">
+            <div class="efield">
+                <div class="elabel">
+                    Multiselect
+                </div>
+                <OMultiselect @bind-Value="input.Multiselect" Opt="multiOpt" />
+            </div>
+        </div>
+        <div class="ib arl">
+            <OField Label="Popup">
+                <OPopup @ref="popup1" Opt="@(new(){ Modal = true, Title = "My Modal Popup", OutClickClose = true })">
+                    <div style="min-width: 30vw; padding: 1em;">
+                        Modal popup content
+                    </div>
+                </OPopup>
+                <OButton OnClick="() => popup1.Open()">Open popup</OButton>
+            </OField>            
+        </div>
+    </div>
+</div>
+
+@code {
+    private OPopup popup1;
+
+    private Input input = new()
+        {
+            Toggle = true,
+            Checkbox = true,
+            NumericInput = 123,
+            DatePicker = DateTime.UtcNow
+        };
+
+    private IEnumerable<KeyContent> meals;
+    private IEnumerable<KeyContent> chefs;
+
+    private DropdownOpt ddOpt = new()
+    {
+        CaptionFunc = RenderComp.ImgCaptionFunc,
+        ItemFunc = RenderComp.ImgItemFunc
+    };
+
+    private DropdownOpt multiOpt = new()
+    {
+        NoSelectClose = true,
+        CssClass = "bigMulti"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        chefs = await cache.Chefs();
+        meals = await cache.Meals();
+
+        input.Multiselect = meals.Take(3).Select(m => (int)m.Key);
+
+        ddOpt.Data = meals;
+        multiOpt.Data = meals;
+
+        multiOpt.ImgItemRender();
+    }
+
+    class Input
+    {
+        public float? NumericInput { get; set; }
+
+        public DateTime? DatePicker { get; set; }
+
+        public int? DropdownList { get; set; }
+
+        public IEnumerable<int> Multiselect { get; set; }
+
+        public IEnumerable<int> Multicheck { get; set; }
+
+        public object Combobox { get; set; }
+
+        public bool Toggle { get; set; }
+
+        public bool Checkbox { get; set; }
+    }
+}

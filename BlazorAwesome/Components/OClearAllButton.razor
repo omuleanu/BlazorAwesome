@@ -1,0 +1,9 @@
+﻿<div class="awe-field o-cmped o-op awe-hasclr">
+    <button type="button" class="awe-btn o-clrAll awe-clrbtn" @onclick="OnClick"><i class="awe-icon awe-icon-x"></i></button>
+</div>
+
+
+@code {
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }    
+}

@@ -1,0 +1,45 @@
+@page "/popup"
+
+<h2>Simple popup</h2>
+<OPopup @ref="popup0" Opt="@(new(){ Title = "My Popup", Height = 150 })">
+    <div style="text-align: center; width: 300px;">
+        Hello world!
+    </div>
+</OPopup>
+<OButton OnClick="() => popup0.Open()">Open popup</OButton>
+
+<h2>Modal popup</h2>
+<OPopup @ref="popup1" Opt="@(new(){ Modal = true, Title = "My Modal Popup", OutClickClose = true })">
+    <div style="min-width: 30vw; padding: 1em;">
+        Modal popup content
+    </div>
+</OPopup>
+<OButton OnClick="() => popup1.Open()">Open popup</OButton>
+
+<h2>Dropdown popup</h2>
+<OPopup @ref="popup2" Opt="@(new(){ Dropdown = true })">
+    Dropdown popup content
+</OPopup>
+
+<OButton @ref="dropBtn" OnClick="() => popup2.Open(new(){ Opener = dropBtn.ElmRef })">Open dropdown</OButton>
+
+<h2>Popup with buttons</h2>
+<OPopup @ref="popupBtns">
+    <ChildContent>
+        <div style="text-align: center;">
+            Popup with buttons content
+        </div>
+    </ChildContent>    
+    <Footer>
+        <OButton OnClick="popupBtns.CloseAsync">Close</OButton>
+    </Footer>
+</OPopup>
+<OButton OnClick="() => popupBtns.Open()">Open popup</OButton>
+
+@code {
+    private OPopup popup0;
+    private OPopup popup1;
+    private OPopup popup2;
+    private OPopup popupBtns;
+    private OButton dropBtn;
+}

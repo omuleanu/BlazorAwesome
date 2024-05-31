@@ -1,0 +1,69 @@
+﻿@using Omu.BlazorAwesome.Components.Internal
+@typeparam TKey
+@inherits OEditorWithData<TKey>
+
+<div class="awe-ajaxradiolist-field awe-field @fieldClass">
+    <div class="awe-display @displayClass">
+        @DisplayMarkup()
+    </div>
+</div>
+@code {
+    protected string name = Guid.NewGuid().ToString();
+    protected string displayClass;
+
+    protected TKey value;
+
+    [Parameter]
+    public TKey Value
+    {
+        set
+        {
+            this.value = value;
+        }
+
+        get
+        {
+            return this.value;
+        }
+    }
+
+    protected async Task setValAsync(TKey val)
+    {
+        value = val;
+        await ValueChanged.InvokeAsync(value);
+        await afterChange();
+        FieldChanged();
+    }
+
+    [Parameter]
+    public EventCallback<TKey> ValueChanged { get; set; }
+
+    protected override async Task checkValInData()
+    {
+        var nul = default(TKey);
+
+        await CompUtil.CheckValues<TKey>(object.Equals(value , nul) ? null : new[] { value }, getData, async (nvals) =>
+        {
+            await setValAsync(nvals.Any() ? nvals.First() : nul);
+        });
+    }
+
+    protected virtual RenderFragment DisplayMarkup()
+    {
+        if (getData is null) return null;
+        return
+    @<ul>
+        @foreach (var item in getData)
+            {
+                <li>
+                    <label class="awe-label">
+                        <input type="radio"
+                   checked="@(Equals(item.Key, value))"
+                   value="@item.Key" @onchange="@(async () => await setValAsync((TKey)item.Key))" name="@name"
+                   disabled="@IsDisabled" />@item.Content
+                    </label>
+                </li>
+            }
+        </ul>;
+    }
+}

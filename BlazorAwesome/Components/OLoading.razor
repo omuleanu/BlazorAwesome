@@ -1,0 +1,33 @@
+﻿@inject IJSRuntime JS;
+@if (visible)
+{
+    <div @ref="divRef" class="spinCont"><div class="spinner"><div class="dot1"></div><div class="dot2"></div></div></div>
+}
+
+@code {
+    private ElementReference divRef;
+    private bool visible = false;
+    private bool delay = false;
+
+    [Parameter]
+    public bool Visible
+    {
+        get { return visible; }
+        set { visible = value; }
+    }
+
+    public void Render(bool visible)
+    {
+        this.visible = visible;
+        delay = true;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (visible)
+        {
+            await JS.InvokeVoidAsync(CompUtil.AweJs("ldngbz"), new { div = divRef, delay });
+        }
+    }
+}

@@ -1,0 +1,140 @@
+@inject IJSRuntime JS
+@implements IDisposable
+
+<h2>Drag and Drop Groups</h2>
+
+<div class="board" @ref="cont">
+    @foreach (var basket in baskets)
+    {
+        <div class="card o-dragItm o-dragCont" data-k="@basket.Id" data-ogroup="@basket.Category">
+            <div class="cardh">@(basket.Name ?? basket.Category)</div>
+            @foreach (var itm in basket.Items)
+            {
+                <div class="item o-dragItm" data-k="@itm.Id" data-ogroup="@itm.Category.Name">
+                    @itm.Name
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<br />
+@foreach (var basket in baskets)
+{
+    <div class="awe-il contDisp">
+        @(basket.Name ?? basket.Category)
+        <br />
+        <ul style="padding-left: 2em;">
+            @foreach (var itm in basket.Items)
+            {
+                <li>@itm.Name</li>
+            }
+        </ul>
+    </div>
+}
+
+<style>
+    .o-dragForb.card {
+        opacity: .5;
+        transition: all .2s;
+    }
+
+    .o-dragForb .item.o-plh {
+        background: #ccc !important;
+        color: white !important;
+    }
+</style>
+
+@code
+{
+    private ElementReference cont;
+    private DotNetObjectReference<DragDropGroups> objRef;
+
+    private List<Basket> baskets = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        //await Task.Delay(100);
+        await seedData();
+    }
+
+    private async Task seedData()
+    {
+        var categories = Db.Categories.ToArray();
+        var meals = Db.Meals.ToArray();
+
+        var mainBasket = new Basket() { Name = "All", Items = new() };
+        baskets.Add(mainBasket);
+
+        var id = 1;
+        foreach (var cat in categories)
+        {
+            var cmeals = meals.Where(m => m.Category == cat).ToList();
+            baskets.Add(new Basket()
+                {
+                    Id = id++,
+                    Category = cat.Name,
+                    Items = cmeals.Take(1).ToList()
+                });
+
+            mainBasket.Items.AddRange(cmeals.Skip(1).Take(2));
+        }
+
+        var last = baskets.Last();
+        baskets.Remove(last);
+        var nlast = baskets.Last();
+        nlast.Items.AddRange(last.Items);
+        nlast.Name = nlast.Category + " and " + last.Category;
+        nlast.Category += "," + last.Category;
+
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            objRef = DotNetObjectReference.Create(this);
+            await AweUtil.InitDragReorder(JS, new()
+                {
+                    Cont = cont,
+                    Selector = ".item", // drag cont -> selector
+
+                    ToCont = cont,
+                    ToSelector = ".card", // drop to ToCont -> ToSelector
+
+                    ObjRef = objRef,
+                    DropMethod = nameof(MoveItem),
+                });
+        }
+    }
+
+    [JSInvokable]
+    public async Task MoveItem(DropRes res)
+    {
+        var id = Convert.ToInt32(res.ItmKey);
+        var cardId = Convert.ToInt32(res.ContKey);
+        var index = res.Index;
+
+        var prevCard = baskets.Single(c => c.Items.Any(itm => itm.Id == id));
+        var newCard = baskets.Single(c => c.Id == cardId);
+        var item = prevCard.Items.Single(itm => itm.Id == id);
+
+        prevCard.Items.Remove(item);
+        newCard.Items.Insert(index, item);
+
+        StateHasChanged();
+    }
+
+    public class Basket
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Category { get; set; }
+        public List<Meal> Items { get; set; }
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+}

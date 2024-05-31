@@ -1,0 +1,137 @@
+﻿@inject IJSRuntime JS
+@implements IDisposable
+
+<h2>Drag and Drop from One Container to Another</h2>
+
+<div @ref="cont">
+@foreach (var c in containers)
+{
+    <div class="dropZone o-dragCont" data-k="@c.Id">
+        <p>container @c.Id</p>
+        @foreach (var itm in c.Items)
+        {
+            <div class="item o-dragItm dragItem" data-k="@itm.Id">@itm.Name</div>
+        }
+    </div>
+}
+</div>
+
+@foreach (var c in containers)
+{
+    <div class="awe-il contDisp">
+        <p>container @c.Id</p>
+        <ul>
+            @foreach (var itm in c.Items)
+            {
+                <li>@itm.Name</li>
+            }
+        </ul>
+    </div>
+}
+
+<style>
+    .dropZone {
+        border: 1px solid #9E9E9E;
+        border-radius: 2px;
+        min-height: 100px;
+        padding: .5em;
+        margin: 1em 0;
+    }
+
+        .dropZone.awe-highlight {
+            background-color: #ffdfb3 !important;
+        }
+
+    .dragItem {
+        display: inline-block;
+        background: gray;
+        color: white;
+        padding: .5em 1em;
+        border-radius: 2px;
+        cursor: default;
+        margin-right: 5px;
+    }
+</style>
+
+
+@code
+{
+    private ElementReference cont;
+    private DotNetObjectReference<DragDropAB> objRef;
+
+    private List<Cont> containers = new();
+    protected override void OnInitialized()
+    {
+        containers.Add(new Cont()
+            {
+                Id = 1,
+                Items = new()
+            {
+                new (){ Id = 1, Name = "A" },
+                new (){ Id = 2, Name = "B" },
+                new (){ Id = 3, Name = "C" }
+            }
+            });
+
+        containers.Add(new Cont()
+            {
+                Id = 2,
+                Items = new() { }
+            });
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            objRef = DotNetObjectReference.Create(this);            
+
+            await AweUtil.InitDragReorder(JS, new() { 
+                ObjRef = objRef,
+                Cont = cont,
+                Selector = ".dragItem", // drag cont -> selector
+                
+                ToCont = cont,
+                ToSelector = ".dropZone", // drop to ToCont -> ToSelector
+                
+                DropMethod = nameof(MoveItem),
+                NoReorder = true
+            });
+        }
+    }
+
+    [JSInvokable]
+    public async Task MoveItem(DropRes res)
+    {
+        var id = Convert.ToInt32(res.ItmKey);
+        var contId = Convert.ToInt32(res.ContKey);
+        var index = res.Index;
+
+        var prevCont = containers.Single(c => c.Items.Any(itm => itm.Id == id));
+        var newCont = containers.Single(c => c.Id == contId);
+        var item = prevCont.Items.Single(itm => itm.Id == id);
+
+        prevCont.Items.Remove(item);
+        newCont.Items.Insert(index, item);
+
+        StateHasChanged();
+    }
+
+    public class Cont
+    {
+        public int Id { get; set; }
+        public List<Item> Items { get; set; }
+    }
+
+    public class Item
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+}
+

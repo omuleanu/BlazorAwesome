@@ -1,0 +1,47 @@
+﻿@using System.Globalization
+@using Microsoft.AspNetCore.Builder
+@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Localization
+@using Microsoft.Extensions.Options
+@inject IJSRuntime JS
+@inject NavigationManager uriHelper;
+
+<ODropdownList Value="Culture" ValueChanged="onValueChanged" TKey="string" Opt="new(){ OpenOnHover = true, Data = cultureItems }" />
+
+@code {
+    private IEnumerable<KeyContent> cultureItems;
+
+    private string Culture { get; set; }
+
+    private async Task onValueChanged(string name)
+    {
+        if (name is null || name == Culture) return;
+
+        await JS.InvokeVoidAsync(
+            "site.setCookie", 
+            CookieRequestCultureProvider.DefaultCookieName, 
+            CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(new CultureInfo(name))));
+
+        uriHelper.NavigateTo(uriHelper.Uri, forceLoad: true);
+    }
+
+    protected override void OnInitialized()
+    {
+        var culture = CultureInfo.CurrentCulture.Name;
+
+        if (culture.Contains("-"))
+        {
+            culture = culture.Split("-")[0];
+        }
+
+        Culture = culture;
+
+        cultureItems = Globals.SupportedCultures
+            .Select(c => new KeyContent(c.Name, capitalFirst(c.NativeName))).ToList();
+    }
+
+    private string capitalFirst(string text)
+    {
+        return char.ToUpper(text[0]) + text.Substring(1);
+    }
+}

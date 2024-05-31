@@ -1,0 +1,117 @@
+@page "/gridsearch"
+@using Omu.BlazorAwesome.Core
+@inject CachedItems cache;
+
+<div class="toplabel">
+    <OContext Opt="@(new(){ ClearBtn = true, AfterChangeFunc = searchAfterChange })">
+        <div class="cbl">
+        <OField Label="Name"><OTextbox @bind-Value="@search" Opt="@(new(){ Placeholder = "name" })" /></OField>        
+        <OField Label="Min meals count"><ONumericInput @bind-Value="@minMeals" Opt="@(new(){ Placeholder = "min meals count", Min = 0 })" /></OField>
+        </div>
+        <div class="cbl">
+        <OField Label="Chef"><ODropdownList @bind-Value="@chef" Opt="new(){ DataFunc = cache.Chefs}" /></OField>
+        <OField Label="Meals"><OMultiselect @bind-Value="@meals" Opt="@(new(){ DataFunc = cache.Meals })" /></OField>        
+        </div>
+    </OContext>
+</div>
+
+
+<OGrid Opt="gopt" />
+
+<div class="expl ntben">
+    Searching (filtering) the grid using controls outside of the grid.
+    When a search control has its value changed we reload the grid.<br />
+    We could have set ValueChanged or AfterChange for each search control, 
+    instead we placed all the search controls inside an OContext,
+    and set AfterChangeFunc on the OContext which will set it for all the awesome controls inside it.    
+</div>
+
+@code
+{
+    private string search;
+    private int? minMeals;
+    private int? chef;
+    private IEnumerable<int> meals;    
+
+    private GridOpt<Dinner> gopt = new();
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private async Task searchAfterChange()
+    {
+        await gopt.State.LoadAsync();
+    }
+
+    private void initGrid()
+    {
+        gopt.Height = 350;
+        gopt.KeyProp = m => m.Id;
+
+        IQueryable<Dinner> getQuery()
+        {
+            var q = Db.Dinners
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                q = q.Where(d => d.Name.Contains(search));
+            }
+
+            if (chef.HasValue)
+            {
+                q = q.Where(d => d.Chef.Id == chef);
+            }
+
+            if (meals?.Any() is true)
+            {
+                var count = meals.Count();
+                q = q.Where(d => d.Meals.Count(m => meals.Contains(m.Id)) == count);
+            }
+
+            if (minMeals > 0)
+            {
+                q = q.Where(d => d.Meals.Count() >= minMeals);
+            }
+
+            return q;
+        }
+
+        gopt.GetQuery = () => getQuery();
+
+        gopt.Columns = new[] {
+            new Column<Dinner>()
+            {
+                For = o => o.Id,
+                Width = 100
+            },
+            new Column<Dinner>()
+            {
+                For = o => o.Name,
+                Grow = 1.2
+            },
+            new Column<Dinner>()
+            {
+                For = o => o.Date,
+            },
+            new Column<Dinner>()
+            {
+                Header = "Chef"
+            }
+            .For(m => m.Chef.FirstName, m => m.Chef.LastName),
+            new Column<Dinner>()
+            {
+                Header = "Meals",
+                GetStr = o => string.Join(", ", o.Meals.Select(m => m.Name)),
+                Grow = 2
+            },
+            new Column<Dinner>()
+            {
+                Header = "Bonus Meal",
+                For = o => o.BonusMeal.Name
+            }
+        };
+    }
+}

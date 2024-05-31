@@ -1,0 +1,97 @@
+@page "/UnboundEditors"
+@using Omu.BlazorAwesome.Core
+<br />
+<br />
+<ODatePicker />
+<br />
+<br />
+<OCombobox Data="meals" />
+<br />
+<br />
+<ODropdownList Opt="Opt1" TKey="int" />
+<br />
+<br />
+<OSelect Data="meals" TKey="int?" />
+<br />
+<br />
+<OMultiselect Data="meals" Opt="new(){ NoSelectClose = true }" TKey="int" />
+<br />
+<br />
+<OMulticheck Data="meals" TKey="int" />
+<br />
+<br />
+<ONumericInput Opt="@(new(){ Decimals = 2})" TValue="double" />
+<br />
+<br />
+<OTextbox Opt="new(){ FormatFunc=FormatFunc }" />
+<OTextbox />
+<br />
+<br />
+<ONumericInput Opt="new(){ Decimals=0, FormatFunc=LenFormat }" TValue="int" />
+<br />
+<br />
+<OToggle @bind-Value="vm.IsDone" />
+<br />
+<br />
+<br />
+<OCheckbox @bind-Value="vm.IsDone" />
+<br />
+<p>
+    <DispLog Obj="vm" />    
+</p>
+
+@code
+{
+    private KeyContent[] meals;
+
+    private Input vm = new()
+        {
+            IsDone = true,
+            Meals1 = new int[] { 169, 171, 173, 175 },
+            Meal1 = new int[] { 171 }
+        };
+
+    private async Task initData()
+    {
+        await Task.Delay(1000);
+        meals = Db.Meals.Select(o => new KeyContent(o.Id, o.Name)).ToArray();
+    }
+
+    private DropdownOpt Opt1;
+
+    private string FormatFunc(string arg)
+    {
+        return "secret";
+    }
+
+    private string LenFormat(int val)
+    {
+        if (val == 0) return string.Empty;
+        return val + " GBP";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Opt1 = new()
+            {
+                ClearBtn = true,
+                DataFunc = async () =>
+                {
+                    await Task.Delay(10);
+                    return Db.Meals.Select(o => new KeyContent(o.Id, o.Name)).ToArray();
+                },
+                InLabel = "val: "
+            };
+
+        await initData();
+    }
+
+    public class Input
+    {
+        public bool IsDone { get; set; }
+
+        public IEnumerable<int> Meals1 { get; set; }
+
+        public int[] Meal1 { get; set; }
+    }
+}

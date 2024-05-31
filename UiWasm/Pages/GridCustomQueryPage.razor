@@ -1,0 +1,117 @@
+﻿@page "/GridCustomQuery"
+@using Omu.BlazorAwesome.Core
+
+<h1>Grid Custom Query</h1>
+<div class="bar">
+    <OTextbox @bind-Value="search" Opt="@(new(){ AfterChangeFunc = searchChange, Placeholder = "search person"})"></OTextbox>
+</div>
+
+<OGrid Opt="gopt" />
+<OWrap @ref="display">
+    <p>sort rules: @sortRules</p>
+    <p>page: @gopt?.State.Page page size: @gopt.State.PageSize </p>
+</OWrap>
+@code
+{
+    private GridOpt<Lunch> gopt = new();
+    private OWrap display;
+    private string search;
+
+    private string sortRules;
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private async Task searchChange()
+    {
+        await gopt.State.LoadAsync();
+    }
+
+    private void initGrid()
+    {
+        gopt.Height = 350;
+        gopt.KeyProp = o => o.Id;
+
+        gopt.LoadData = async () =>
+        {
+            var query = Db.Lunches.AsQueryable();
+
+            if (search is not null)
+            {
+                query = query.Where(o => o.Person.Contains(search, StringComparison.InvariantCultureIgnoreCase));
+            }
+
+            // order by
+            query = gopt.State.OrderBy(query);
+
+            // perform paging manually
+            gopt.State.Items = AweUtil.GetPage(query, gopt.State.Page, gopt.State.PageSize);
+
+            // set total items count
+            gopt.State.Count = query.Count();
+
+            // rest is for "display" content
+            var sortRules = gopt.State.GetSortRules();
+
+            this.sortRules = string.Empty;
+
+            foreach (var kv in sortRules)
+            {
+                this.sortRules += kv.Key + " " +
+                (kv.Value == Sort.Asc ? "Asc" : "Desc") + "; ";
+            }
+
+            display?.Render();
+        };
+
+        gopt.Column(new()
+            {
+                For = o => o.Id,
+                Width = 100
+            });
+
+        gopt.Column(new()
+            {
+                For = o => o.Person,
+                Grow = 1.2,
+            });
+
+        gopt.Column(new()
+            {
+                For = o => o.Food,
+                Render = RenderComp.LunchImgFood
+            });
+
+        gopt.Column(new()
+            {
+                For = o => o.Country.Name,
+                Header = "Country"
+            });
+
+        gopt.Column(new()
+            {
+                For = o => o.Date,
+            });
+
+        gopt.Column(new()
+            {
+                Header = "Meals",
+                GetStr = o => string.Join(", ", o.Meals.Select(o => o.Name)),
+                Grow = 1.3
+            });
+
+        gopt.Column(new()
+            {
+                For = o => o.Location
+            });
+
+        gopt.Column(new()
+            {
+                Header = "Chef",
+                GetStr = o => o.Chef.FullName
+            })
+        .For(o => o.Chef.FirstName, o => o.Chef.LastName);
+    }
+}

@@ -1,0 +1,114 @@
+﻿@page "/editors"
+@inject CachedItems cache
+
+<EditForm OnValidSubmit="@HandleValidSubmit" Model="model">
+    <DataAnnotationsValidator />
+    <OContext Opt="@(new (){Disabled = disabled})">        
+        <OField For="() => model.Textbox">
+            <OTextbox @bind-Value="model.Textbox" Opt="new(){ ClearBtn = true }" />
+        </OField>
+        <OField For="() => model.Numeric">
+            <ONumericInput @bind-Value="model.Numeric" Opt="new(){ Min = 0 }" />
+        </OField>
+        <OField For="() => model.NumericFloat">
+            <ONumericInput @bind-Value="model.NumericFloat"
+                           Opt="@(new() { Decimals = 2, Min = 20, Max = 150, FormatFunc = formatCurrency })" />
+        </OField>
+        <OField For="() => model.DatePicker">
+            <ODatePicker @bind-Value="model.DatePicker"/>
+        </OField>
+        <OField For="() => model.TimePicker">
+            <OTimePicker @bind-Value="model.TimePicker" />
+        </OField>
+        <OField For="() => model.DropdownList">
+            <ODropdownList @bind-Value="model.DropdownList" Opt="@(new()
+        {
+            CaptionFunc = RenderComp.ImgCaptionFunc,
+            ItemFunc = RenderComp.ImgItemFunc,
+            Data = meals
+        })" />
+
+        </OField>
+        <OField For="() => model.RadioList">
+            <ORadioList @bind-Value="model.RadioList" Data="categories" />
+        </OField>
+        <OField For="() => model.RadioListNative">
+            <ORadioListNative @bind-Value="model.RadioListNative" Data="categories" />
+        </OField>
+        <OField For="() => model.Multiselect">
+            <OMultiselect @bind-Value="model.Multiselect" Opt="dopt" />
+        </OField>
+        <OField For="() => model.Combobox">
+            <OCombobox @bind-Value="model.Combobox" Opt="dopt" />
+        </OField>
+        <OField For="() => model.Multicheck">
+            <OMulticheck @bind-Value="model.Multicheck" Opt="dopt" />
+        </OField>
+        <OField For="() => model.CheckboxList">
+            <OCheckboxList @bind-Value="model.CheckboxList" Data="categories" />
+        </OField>
+        <OField For="() => model.CheckboxListNative">
+            <OCheckboxListNative @bind-Value="model.CheckboxListNative" Data="categories" />
+        </OField>
+        <OField For="() => model.Select">
+            <OSelect @bind-Value="model.Select" Data="categories" />
+        </OField>
+        <OField For="() => model.ToggleButton">
+            <OToggle @bind-Value="model.ToggleButton" />
+        </OField>
+        <OField For="() => model.Checkbox">
+            <OCheckbox @bind-Value="model.Checkbox" />
+        </OField>
+        <OField For="() => model.CheckboxNative">
+            <OCheckboxNative @bind-Value="model.CheckboxNative" />
+        </OField>
+        <OField For="() => model.SelectList">
+            <OSelectList @bind-Value="model.SelectList" Opt="@(new(){ Data = meals})" />
+        </OField>
+        <OButton Submit="true">Submit</OButton>
+    </OContext>
+    <ValidationSummary />
+</EditForm>
+
+<p>
+    disable editors: <OToggle @bind-Value="@disabled" />
+</p>
+
+<DispLog Obj="model"/>
+
+@code {
+    private bool disabled;
+
+    private string formatCurrency(double? val)
+    {
+        if (val is null) return string.Empty;
+        return val.Value.ToString("N2") + " $";
+    }
+
+    private EditorsInput model = new EditorsInput();
+
+    private IEnumerable<KeyContent> meals;
+
+    private IEnumerable<KeyContent> categories;
+
+    private DropdownOpt dopt = new()
+        {
+            CaptionFunc = RenderComp.ImgCaptionFunc,
+            ItemFunc = RenderComp.ImgItemFunc,
+            ClearBtn = true
+        };
+
+    protected async override Task OnInitializedAsync()
+    {
+        categories = await cache.Categories();
+
+        meals = await cache.Meals();
+
+        dopt.Data = meals;
+    }
+
+    private void HandleValidSubmit()
+    {
+        // Process the valid form
+    }
+}

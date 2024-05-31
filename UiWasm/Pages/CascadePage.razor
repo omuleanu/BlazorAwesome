@@ -1,0 +1,39 @@
+@page "/cascade"
+@using Omu.BlazorAwesome.Core
+@inject CachedItems cache
+
+<h2>Cascading DropdownLists</h2>
+<OField Label="Category">
+    <ODropdownList @bind-Value="category" Opt="new(){ DataFunc = cache.Categories, ClearBtn = true }" />
+</OField>
+<OField Label="Meal">
+    <ODropdownList @bind-Value="meal" Opt="new(){ DataFunc = getMealsByCategory, ParentValueFunc = () => category }" />
+</OField>
+
+<div class="expl ntben">
+    Showing how to perform cascade between editors. When changing value for the Category Dropdownlist the data for the rest of the editors will change.
+</div>
+
+<CascadeLocalData/>
+
+<h2>RadioList and CheckboxList cascade</h2>
+<CascadeRadioList/>
+
+@code
+{
+    private int? category;
+    private int? meal;    
+    
+    private async Task<IEnumerable<KeyContent>> getMealsByCategory()
+    {
+        if (!category.HasValue)
+        {
+            return Enumerable.Empty<KeyContent>();
+        }
+
+        {
+            var cmeals = Db.Meals.Where(m => m.Category.Id == category).ToArray();
+            return cmeals.Select(m => new KeyContent(m.Id, m.Name));
+        }
+    }
+}

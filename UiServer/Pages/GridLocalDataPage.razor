@@ -1,0 +1,58 @@
+﻿@page "/gridlocaldata"
+@inject IDbContextFactory<MyContext> cxf
+
+@if (dinners is not null)
+{
+    <OGrid Opt="gopt" />
+}
+
+<div class="expl ntben">
+    On page init we load all the data (all pages) for the grid. So the grid won't have to make any data requests, while paging, sorting etc. <br />
+    Unlike the rest of our demos where we call the DbContext each time we page, sort, filter.
+</div>
+
+@code
+{
+    private IEnumerable<Dinner> dinners;
+
+    private GridOpt<Dinner> gopt;
+
+    protected override async Task OnInitializedAsync()
+    {
+        initGrid();
+
+        using var cx = cxf.CreateDbContext();        
+        dinners = await cx.Dinners.Include(p => p.BonusMeal).Take(100).ToArrayAsync();             
+    }
+
+    private void initGrid()
+    {
+        gopt = new();
+        gopt.Height = 350;
+        gopt.KeyProp = m => m.Id;
+
+        gopt.GetQuery = () => dinners.AsQueryable();
+
+        gopt.Columns = new[] {
+            new Column<Dinner>()
+            {
+                For = o => o.Id,
+                Width = 100
+            },
+            new Column<Dinner>
+            {
+                For = o => o.Name,
+                Grow = 1.2
+            },
+            new Column<Dinner>
+            {
+                For = o => o.Date,
+            },
+            new Column<Dinner>
+            {
+                Header = "Bonus Meal",
+                For = o => o.BonusMeal.Name
+            },
+        };
+    }
+}

@@ -1,0 +1,23 @@
+﻿@ChildContent
+
+@code {
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public Func<bool, Task> OnAfterRenderFunc { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (OnAfterRenderFunc != null)
+        {
+            await OnAfterRenderFunc(firstRender);
+        }
+    }
+
+    public void Render()
+    {
+        StateHasChanged();
+    }
+}

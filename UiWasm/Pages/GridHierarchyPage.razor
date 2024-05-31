@@ -1,0 +1,69 @@
+@page "/gridhierarchy"
+@using Omu.BlazorAwesome.Core
+<OGrid Opt="gopt" />
+
+@code
+{
+    private GridOpt<Category> gopt = new();
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private RenderFragment mealsGrid(Category itm)
+    {
+        GridOpt<Meal> mealGopt = new();
+        mealGopt.GetQuery = () => Db.Meals.Where(o => o.Category.Id == itm.Id).AsQueryable();        
+
+        mealGopt.KeyProp = m => m.Id;
+        mealGopt.Columns = new[]
+        {
+            new Column<Meal>
+            {
+                For = o => o.Id,
+                Width = 100
+            },
+            new Column<Meal>
+            {
+                For = o => o.Name,
+            },
+            new Column<Meal>
+            {
+                For = o => o.Description,
+                Grow = 3,
+                MinWidth = 250
+            },
+        };
+
+        return @<div style="padding: 1em"><OGrid Opt="mealGopt" /></div>;
+    }
+
+    private RenderFragment renderMealsGrid(Category itm)
+    {
+        return mealsGrid(itm);
+    }
+
+    private void initGrid()
+    {
+        gopt.Groupable = false;
+        gopt.KeyProp = m => m.Id;
+        gopt.GetQuery = () => Db.Categories.AsQueryable();        
+
+        gopt.Columns = new[] {
+            new Column<Category>
+            {
+                Width = 130,
+                Render = itm =>
+    @<OButton CssClass="@gopt.State.Nesting.NestClass(itm.Id)"
+                          OnClick="() => gopt.State.Nesting.ToggleOpen(new(){ Key = itm.Id, Render = renderMealsGrid(itm)})">
+        <i class="o-caretc"><i class="o-caret"></i></i> details
+    </OButton>
+            },
+            new Column<Category>
+            {
+                For = o => o.Name
+            }
+        };
+    }
+}

@@ -1,0 +1,47 @@
+﻿@using Omu.BlazorAwesome.Components.Internal
+@inherits OEditorBase<bool>
+
+<div class="awe-field awe-chk-field @fieldClass">
+    <div class="awe-display">
+        @display
+    </div>
+</div>
+@*value: @Value*@
+
+@code {
+    protected RenderFragment display;    
+
+    [Parameter]
+    public EditorOpt Opt { get; set; }
+
+    [Parameter]
+    public bool Value { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ValueChanged { get; set; }
+
+    protected override IEditorOpt getOpt()
+    {
+        return Opt;
+    }
+
+    private async Task onChkInput(ChangeEventArgs e)
+    {
+        Value = (bool)e.Value;
+        await ValueChanged.InvokeAsync(Value);
+        await afterChange();
+        FieldChanged();
+    }
+
+    protected virtual RenderFragment DisplayMarkup()
+    {
+        return 
+    @<input type="checkbox" @oninput="onChkInput" checked="@Value" disabled="@IsDisabled" />;
+    }
+
+    protected override Task OnInitializedAsync()
+    {
+        display = DisplayMarkup();
+        return base.OnInitializedAsync();
+    }
+}

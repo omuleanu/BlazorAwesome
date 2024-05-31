@@ -1,0 +1,52 @@
+@inject CachedItems cache
+
+<div class="example cbl qo">
+    <div class="ib arl">
+        <OField For="() => input.RadioList">
+            <ORadioList @bind-Value="input.RadioList" Opt="new(){ Data = categories }" />
+        </OField>
+    </div>
+    <div class="ib arl">
+        <OField For="() => input.CheckboxList">
+            <OCheckboxList @bind-Value="input.CheckboxList" Opt="chkListOpt" />
+        </OField>
+    </div>
+</div>
+@code {
+    private Input input = new();
+
+    private IEnumerable<KeyContent> meals;
+    private IEnumerable<KeyContent> categories;
+    private DataEditorOpt chkListOpt;
+
+    protected override async Task OnInitializedAsync()
+    {        
+        meals = await cache.Meals();
+        categories = await cache.Categories();
+
+        var firstCategoryKey = (int)categories.First().Key;
+        input.RadioList = firstCategoryKey;
+
+        var initMeals = Db.Meals.Where(m => m.Category.Id == firstCategoryKey)
+            .Take(2).Select(o => o.Id).ToList();
+
+        input.CheckboxList = initMeals;
+        
+        // this way getChildMeals won't execute until we've initialized the values above (parent input.RadioList)
+        chkListOpt = new() { DataFunc = getChildMeals, ParentValueFunc = () => input.RadioList };
+    }
+
+    private async Task<IEnumerable<KeyContent>> getChildMeals()
+    {        
+        var items = Db.Meals.Where(m => m.Category.Id == input.RadioList).ToArray();
+
+        return items.Select(m => new KeyContent(m.Id, m.Name));        
+    }
+
+    class Input
+    {
+        public int? RadioList { get; set; }
+
+        public IEnumerable<int> CheckboxList { get; set; }
+    }
+}

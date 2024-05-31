@@ -1,0 +1,243 @@
+﻿@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<h2>Drag Cards and Items</h2>
+
+<div id="dragContr" @ref="dragFromCont">
+    <div class="board" @key="@dragKey">
+        @foreach (var c in cards)
+        {
+            <div class="card o-dragItm o-dragCont" data-k="@c.Id">
+                <div class="cardh">card @c.Id</div>
+                @foreach (var itm in c.Items)
+                {
+                    <div class="item o-dragItm" data-k="@itm.Id">@itm.Name</div>
+                }
+            </div>
+        }
+    </div>
+</div>
+<br />
+<br />
+<OField Label="Drag and drop:">
+    <OToggle Value="dragEnabled" ValueChanged="onDragEnableChanged"
+             Opt="@(new(){ Yes = "Enabled", No = "Disabled", Width = "7em"})" />
+</OField>
+<OField Label="Sticky placeholder:">
+    <OToggle Value="stickyPlaceholder" ValueChanged="onStikyChanged" />
+</OField>
+
+<br />
+<OWrap @ref="display">
+@foreach (var c in cards)
+{
+    <div class="awe-il contDisp">
+        <text>card</text> @c.Id
+        <br />
+        <ul style="padding-left: 2em;">
+            @foreach (var itm in c.Items)
+            {
+                <li>@itm.Name</li>
+            }
+        </ul>
+    </div>
+}
+</OWrap>
+@code
+{
+    ElementReference dragFromCont;
+    private DotNetObjectReference<DragCardsAndItems> objRef;
+    private int dragKey = 1;
+
+    private OWrap display;
+
+    private IJSObjectReference dragRefCard;
+    private IJSObjectReference dragRefItem;
+
+    private bool dragEnabled = true;
+    private bool stickyPlaceholder = false;
+
+    private List<Card> cards = new();
+
+    protected override void OnInitialized()
+    {
+        cards.Add(new Card()
+            {
+                Id = 1,
+                Items = new()
+            {
+                new (){ Id = 1, Name = "item 1" },
+                new (){ Id = 2, Name = "item 2" },
+                new (){ Id = 3, Name = "item 3" }
+            }
+            });
+
+        cards.Add(new Card()
+            {
+                Id = 2,
+                Items = new()
+            {
+                new (){ Id = 4, Name = "item 4" },
+                new (){ Id = 5, Name = "item 5" }
+            }
+            });
+
+        cards.Add(new Card()
+            {
+                Id = 3,
+                Items = new()
+            {
+                new (){ Id = 6, Name = "item 6" },
+                new (){ Id = 7, Name = "item 7" }
+            }
+            });
+    }
+
+    private async Task removeDrag()
+    {
+        await JS.InvokeVoidAsync("awe.remDrag", dragRefCard);
+        await JS.InvokeVoidAsync("awe.remDrag", dragRefItem);
+    }
+
+    public async Task onStikyChanged(bool value)
+    {
+        stickyPlaceholder = value;
+        await setDragAsync();
+    }
+
+    public async Task onDragEnableChanged(bool value)
+    {
+        dragEnabled = value;
+
+        if (value)
+        {
+            await setDragAsync();
+        }
+        else
+        {
+            await removeDrag();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await onDragEnableChanged(dragEnabled);
+        }
+    }
+
+    private async Task setDragAsync()
+    {
+        if (!dragEnabled)
+        {
+            return;
+        }
+
+        if (objRef is null)
+        {
+            objRef = DotNetObjectReference.Create(this);
+        }
+
+        dragRefCard = await AweUtil.InitDragReorderRet(JS, new()
+            {
+                ObjRef = objRef,           
+
+                Cont = dragFromCont,
+                Selector = ".card", // drag fromCont -> selector
+
+                ToCont = dragFromCont,
+                ToSelector = ".board", // drop to toCont -> toSelector
+                
+                DropMethod = nameof(MoveCard),
+                StickyPlaceholder = stickyPlaceholder,
+                
+                DragRef = dragRefCard, // used to remove previous drag handler before enabling
+                
+                // when using ChangeDom you must change @key of drag container before each drop StateChange
+                ChangeDom = true 
+            });
+
+        dragRefItem = await AweUtil.InitDragReorderRet(JS, new()
+            {
+                ObjRef = objRef,                
+                
+                Cont = dragFromCont,
+                Selector = ".item",
+
+                ToCont = dragFromCont,
+                ToSelector = ".card",                
+                
+                DropMethod = nameof(MoveItem),
+                StickyPlaceholder = stickyPlaceholder,
+
+                DragRef = dragRefItem,                
+                
+                // when using ChangeDom you must change @key of drag container before each drop StateChange
+                ChangeDom = true
+            });
+    }
+
+    [JSInvokable]
+    public async Task MoveCard(DropRes res)
+    {
+        var id = Convert.ToInt32(res.ItmKey);
+        var index = res.Index;
+
+        var item = cards.Single(c => c.Id == id);
+        cards.Remove(item);
+        cards.Insert(index, item);
+
+        afterDrop();
+    }
+
+    [JSInvokable]
+    public async Task MoveItem(DropRes res)
+    {
+        var id = Convert.ToInt32(res.ItmKey);
+        var cardId = Convert.ToInt32(res.ContKey);
+        var index = res.Index;
+
+        var prevCard = cards.Single(c => c.Items.Any(itm => itm.Id == id));
+        var newCard = cards.Single(c => c.Id == cardId);
+        var item = prevCard.Items.Single(itm => itm.Id == id);
+
+        prevCard.Items.Remove(item);
+        newCard.Items.Insert(index, item);
+
+        afterDrop();
+    }
+
+    private void afterDrop(){
+        dragKey++;
+        display.Render();
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        objRef?.Dispose();
+
+        if (dragRefCard is not null)
+        {
+            await dragRefCard.DisposeAsync();
+
+        }
+
+        if (dragRefItem is not null)
+        {
+            await dragRefItem.DisposeAsync();
+        }
+    }
+
+    public class Card
+    {
+        public int Id { get; set; }
+        public List<CardItem> Items { get; set; }
+    }
+
+    public class CardItem
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+    }
+}

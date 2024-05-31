@@ -1,0 +1,87 @@
+@page "/AfterChange"
+@using Omu.BlazorAwesome.Core
+@inject CachedItems cache;
+
+<p>changes: @changes</p>
+<p>trend: @(trend++)</p>
+<div class="bar">
+    <OContext Opt="@(new(){ ClearBtn = true, AfterChangeFunc = afterChange })">
+        <OField>
+            <OTextbox Opt="@(new(){ Placeholder = "name" })" />
+        </OField>
+        <OField>
+            <ONumericInput TValue="int" Opt="@(new(){ Placeholder = "min meals count" })" />
+        </OField>
+        <OField>
+            <ODropdownList TKey="int" Opt="new(){ DataFunc = cache.Chefs}" />
+        </OField>
+        <OField>
+            <OSelect Opt="new(){ DataFunc = cache.Chefs}" @bind-Value="input.Select" />
+        </OField>
+        <OField>
+            <OMultiselect TKey="int" Opt="@(new(){ DataFunc = cache.Meals })" />
+        </OField>
+        <OField>
+            <OCombobox Opt="@(new(){ DataFunc = cache.Meals })" />
+        </OField>
+        <OField>
+            <OMulticheck TKey="int" Opt="@(new(){ DataFunc = cache.Meals })" />
+        </OField>
+        <OField>
+            <OToggle />
+        </OField>
+        <OField>
+            <OCheckbox />
+        </OField>
+        <OField>
+            <OCheckboxNative />
+        </OField>
+        <OField>
+            <ORadioList TKey="int" Opt="new(){ Data = categories }" />
+        </OField>
+        <OField>
+            <ORadioListNative TKey="int" Opt="new(){ Data = categories }" />
+        </OField>
+        <OField>
+            <OCheckboxList TKey="int" Opt="new(){ Data = categories }" />
+        </OField>
+        <OField>
+            <OCheckboxListNative TKey="int" Opt="new(){ Data = categories }" />
+        </OField>
+        <OField>
+            <ODatePicker />
+        </OField>
+        <OField>
+            <OTextbox Opt="@(new(){ Placeholder = "name" })" />
+        </OField>
+    </OContext>
+</div>
+
+<p>changes: @changes</p>
+
+<DispLog Obj="input"/>
+
+@code
+{
+    private int trend = 0;
+    private int changes = 0;
+    private Input input = new();
+
+    private IEnumerable<KeyContent> categories;    
+
+    private async Task afterChange()
+    {
+        changes++;
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await cache.Categories();
+    }
+
+    class Input
+    {
+        public int? Select { get; set; }
+    }
+}

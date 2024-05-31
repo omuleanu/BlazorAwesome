@@ -1,0 +1,61 @@
+﻿@inject IDbContextFactory<MyContext> cxf
+@inject IJSRuntime JS
+
+<h2>Remote Search Without Cache</h2>
+<OField For="() => model.DropdownList">
+    <ODropdownList Opt="new(){ Data = items, SearchFunc = SearchFunc}"
+                   @bind-Value="model.DropdownList" />
+</OField>
+<br />
+<br />
+<div class="expl">
+    Load results from the database when user stops typing.
+    When the results are loaded we clear the previous items with the exception of the item for the currently selected value
+</div>
+
+@code {
+    private RmtSearchInput model = new();
+
+    private List<KeyContent> items = new();
+
+    private async Task<bool> SearchFunc(string str)
+    {        
+        str = str.Trim();
+        if (str.Length == 0) return false;
+
+        #region optional perf optim
+        // don't load when local results count > 10
+        if (items.Count(o => o.Content.Contains(str)) > 10) return false;
+        #endregion
+
+        // clear items, leave only selected value
+        var vals = items.Where(o => object.Equals(o.Key, model.DropdownList)).ToList();
+        items.Clear();
+        items.AddRange(vals);
+
+        using var mcx = cxf.CreateDbContext();
+        var res = await mcx.Meals.Where(m => m.Name.Contains(str)).Take(10).ToArrayAsync();
+
+        foreach (var resitem in res)
+        {
+            if (!items.Select(o => o.Key).Contains(resitem.Id))
+            {
+                items.Add(new KeyContent(resitem.Id, resitem.Name));
+            }
+        }
+
+        return true;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var mcx = cxf.CreateDbContext();
+        var initMeals = await mcx.Meals.Take(5).ToArrayAsync();
+        items.AddRange(initMeals.Select(o => new KeyContent(o.Id, o.Name)));
+    }
+
+    public class RmtSearchInput
+    {
+        public int? DropdownList { get; set; }
+    }
+}

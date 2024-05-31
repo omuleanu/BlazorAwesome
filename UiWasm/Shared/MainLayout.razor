@@ -1,0 +1,51 @@
+﻿@inherits LayoutComponentBase
+<header id="header">
+    <nav role="navigation" class="navmain">
+        <ul class="menu mainmenu">
+            <li style="margin: 0;">
+                <NavLink href="">
+                    <i class="logo"></i>
+                </NavLink>
+            </li>
+            <li>
+                <button type="button" id="btnMenuToggle" class="" style="margin-bottom: 5px;" aria-label="toggle side menu">
+                    <i class="iconGuide"></i>
+                    <i class="guideCaret"></i>
+                </button>
+            </li>            
+            <li>
+                <NavLink href="/About">About</NavLink>
+            </li>
+        </ul>
+        <div class="stgpnl">            
+            <GithubStar />
+            <ThemeSwitch />
+            <LanguageSwitch />            
+            <div style="clear: both;"></div>
+        </div>
+    </nav>
+</header>
+<div id="main" style="clear: both;">
+    <NavMenu />
+    <div id="demoPage">
+        <main id="maincont" role="main" style="min-height:calc(100vh - 200px)">            
+            <MyErrorBoundary>
+                <DemoPager />
+                @Body
+            </MyErrorBoundary>
+            <br />
+            <br style="clear: both;" />
+        </main>
+        <nav id="footer" role="navigation">
+            <p>
+                <a href="https://www.aspnetawesome.com/learn/blazor/Installation">Documentation</a>
+                <a href="https://www.aspnetawesome.com/ContactUs">Contact Us</a>
+            </p>
+            <p>                
+                <a href="https://www.aspnetawesome.com/Company/TermsOfUse">Terms of Use</a>
+                <a href="https://www.aspnetawesome.com/Company/PrivacyPolicy">Privacy policy</a>
+                <a href="https://www.aspnetawesome.com/Company/CookiePolicy">Cookie policy</a>
+            </p>
+        </nav>
+    </div>
+</div>

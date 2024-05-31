@@ -1,0 +1,14 @@
+﻿@if (isVisible)
+{
+    <div class="awe-loading visib"><span></span></div>
+}
+
+@code {
+    private bool isVisible = false;
+
+    public void Render(bool visible)
+    {
+        isVisible = visible;
+        StateHasChanged();
+    }
+}

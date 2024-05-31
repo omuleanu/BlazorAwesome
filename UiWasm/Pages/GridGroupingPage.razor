@@ -1,0 +1,101 @@
+@page "/gridgrouping"
+@using Omu.BlazorAwesome.Core
+<OGrid Opt="gopt" />
+
+@code
+{
+    private GridOpt<Lunch> gopt = new();    
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private void initGrid()
+    {
+        gopt.Height = 450;
+        gopt.KeyProp = m => m.Id;
+        gopt.GetQuery = () => Db.Lunches.AsQueryable();
+
+        gopt.MakeFooter = inf =>
+        {
+            var vals = new Dictionary<string, object>();
+
+            vals.Add("Date", "Max: " + inf.Items.Max(o => o.Date).ToShortDateString());
+            vals.Add("Price", "Sum: " + inf.Items.Sum(o => o.Price));
+            vals.Add("Person", "Count: " + inf.Items.Count());
+            vals.Add("Location", inf.Items.DistinctBy(o => o.Location).Count() + " distinct locations");
+
+            return new() { Values = vals };
+        };
+
+        gopt.MakeHeader = inf =>
+        {
+            var gval = gopt.State.GetColumnStrVal(inf.Column.Bind, inf.Items.First());
+
+            var count = inf.Items.Count();
+            var maxp = inf.Items.Max(o => o.Price);
+            return new()
+                {
+                    Content = $"{inf.Column.Header}: {gval} ( count = {count}, max price = {maxp} )"
+                };
+        };
+
+        gopt.Column(new()
+            {
+                For = m => m.Id,
+                Width = 100
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Person,
+                Grow = 1.2,
+                Group = true
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Food.Name,
+                Header = "Food",
+                Render = RenderComp.LunchImgFood,
+                Group = true
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Country.Name,
+                Header = "Country"
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Date,
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Price,
+            });
+
+        gopt.Column(new()
+            {
+                Header = "Meals",
+                GetStr = o => string.Join(", ", o.Meals.Select(o => o.Name)),
+                Grow = 1.3,
+                MinWidth = 200
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Location
+            });
+
+        gopt.Column(new()
+            {
+                Header = "Chef",
+                GetStr = o => o.Chef.FullName
+            })
+        .For(m => m.Chef.FirstName, m => m.Chef.LastName);
+    }
+}

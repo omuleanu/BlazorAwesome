@@ -1,0 +1,239 @@
+﻿@page "/gridsavestate"
+@inject IJSRuntime JS
+@inject IDbContextFactory<MyContext> cxf
+@using Omu.BlazorAwesome.Core
+@using System.Text.Json
+
+<OGrid Opt="gopt" @ref="grid" />
+
+<div class="expl">
+    Grid state (filtering, grouping, columns) is being saved so it would be the same after you refresh the page, or go to another page and return.
+</div>
+@code
+{
+    private OGrid<Lunch> grid;
+    private GridOpt<Lunch> gopt = new();
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await loadState();
+        await gopt.State.LoadAsync();
+    }
+
+    private async Task loadState()
+    {
+        var res = await JS.InvokeAsync<string>("site.getLSVal", new object[] { "grid1" });
+
+        if (res is null) return;
+        var gsd = AweUtil.Deserialize<GridStateDto>(res);
+
+        gopt.State.Page = gsd.Page;
+        gopt.State.PageSize = gsd.PageSize;
+
+        gopt.State.FilterValues = gsd.FilterValues.ToDictionary(kv => kv.Key, kv => AweJsonUtil.FromAweJsonObj(kv.Value));
+
+        var list = new List<ColumnState<Lunch>>();
+        foreach (var csd in gsd.ColumnsStates)
+        {
+            var column = gopt.Columns.FirstOrDefault(c => c.Id == csd.Id);
+            if (column is null) return;
+            var cs = new ColumnState<Lunch>()
+                    {
+                        Id = csd.Id,
+                        Group = csd.Group,
+                        Hidden = csd.Hidden,
+                        Rank = csd.Rank,
+                        Sort = csd.Sort,
+                        Width = csd.Width,
+                    };
+
+            cs.Column = column;
+            list.Add(cs);
+        }
+
+        if (list.Count != gopt.Columns.Count) return;
+
+        gopt.State.ColumnsStates = list;
+    }
+
+    private async Task saveState()
+    {
+        var page = gopt.State.Page;
+        var gsd = new GridStateDto()
+                {
+                    Page = gopt.State.Page,
+                    PageSize = gopt.State.PageSize,
+                    ColumnsStates = gopt.State.ColumnsStates.Select(cs => new ColumnStateDto
+                    {
+                        Id = cs.Id,
+                        Group = cs.Group,
+                        Hidden = cs.Hidden,
+                        Rank = cs.Rank,
+                        Sort = cs.Sort,
+                        Width = cs.Width
+                    }).ToArray()
+                };
+
+        gsd.FilterValues = gopt.State.FilterValues.ToDictionary(kv => kv.Key, kv => AweJsonUtil.ToAweJsonObj(kv.Value));
+
+        await JS.InvokeVoidAsync("site.setLSVal", new object[] { "grid1", AweUtil.Serialize(gsd) });
+    }
+
+    private void initGrid()
+    {
+        gopt.Height = 450;
+        gopt.ColumnWidth = 200;
+        gopt.KeyProp = m => m.Id;
+        gopt.FilterRow = true;
+        gopt.StateChangeFunc = saveState;
+
+        // don't load the grid on init,
+        // we call load after getting state from browser session storage (OnAfterRenderAsync)
+        gopt.Load = false;
+
+        gopt.EFData(cxf, cx => cx.Lunches
+        .Include(p => p.Food)
+        .Include(p => p.Meals)
+        .Include(p => p.Chef)
+        .Include(p => p.Country));
+
+        gopt.Column(new()
+                {
+                    For = m => m.Person,
+                    Grow = 1.2,
+                })
+    .StringFilter(gopt, this); ;
+
+        gopt.Column(new()
+                {
+                    For = m => m.Food.Name,
+                    Render = RenderComp.LunchImgFood,
+                    Header = "Food"
+                })
+    .Filter(new()
+            {
+                Render = cs => gopt.State.FilterTextbox(this, cs),
+                Query = val => itm => itm.Food.Name.Contains(val.ToString())
+            });
+
+        gopt.Column(new()
+                {
+                    For = m => m.Country.Name,
+                    Header = "Country"
+                })
+    .Filter(new()
+            {
+                Query = val => itm => itm.Country.Id == (int)val,
+                GetData = async fcx => fcx.Query.Select(o => o.Country).Distinct().Select(o => new KeyContent(o.Id, o.Name)).ToArray()
+            }); ;
+
+        gopt.Column(new()
+                {
+                    For = m => m.Date,
+                })
+    .DateOpFilter(gopt, this);
+
+        gopt.Column(new()
+                {
+                    Header = "Meals",
+                    GetStr = o => string.Join(", ", o.Meals.Select(o => o.Name)),
+                    Grow = 1.3
+                }).Filter(new()
+                {
+                    Render = cs => gopt.State.FilterMultiselect<Lunch, int>(this, cs),
+
+                    GetData = async fcx => fcx.Query.SelectMany(o => o.Meals).Distinct()
+                .OrderBy(o => o.Id)
+                .Select(o => new KeyContent(o.Id, o.Name)).ToArray(),
+
+                    Query = val =>
+                {
+                    var selMealsIds = (IEnumerable<int>)val;
+                    return itm => itm.Meals.Count(m => selMealsIds.Contains(m.Id)) == selMealsIds.Count();
+                },
+                    SelfFilter = true
+                });
+
+        gopt.Column(new()
+                {
+                    For = m => m.Location
+                }).Filter(new()
+                {
+                    Query = val => itm => itm.Location == val.ToString(),
+                    GetData = async fcx => fcx.Query.Select(itm => itm.Location).Distinct().Select(o => new KeyContent(o, o)).ToArray()
+                });
+
+        gopt.Column(new()
+                {
+                    Header = "Chef",
+                    GetStr = o => o.Chef.FullName
+                })
+    .For(m => m.Chef.FirstName, m => m.Chef.LastName)
+    .Filter(new()
+            {
+                Query = val => itm => itm.Chef.Id == (int)val,
+                Render = chefRemoteFilterDropdown
+            });
+    }
+
+    #region chef remote search filter
+    private List<KeyContent> chefsData = new();
+    private Func<string, Task<bool>> getChefSearchFunc(string columnId)
+    {
+        return async str =>
+    {
+        str = str.Trim();
+        if (str.Length == 0) return false;
+
+        #region optional perf optim
+        // don't load when local results count > 10
+        if (chefsData.Count(o => o.Content.Contains(str)) > 10) return false;
+        #endregion
+
+        // clear items, leave only selected value
+        var vals = chefsData.Where(o => object.Equals(o.Key, grid.State.GetFilterValue(columnId))).ToList();
+        chefsData.Clear();
+        chefsData.AddRange(vals);
+
+        using var mcx = cxf.CreateDbContext();
+        var res = await mcx.Chefs
+        .Where(m => m.FirstName.Contains(str) || m.LastName.Contains(str))
+        .Take(10).ToArrayAsync();
+
+        foreach (var resitem in res)
+        {
+            if (!chefsData.Select(o => o.Key).Contains(resitem.Id))
+            {
+                chefsData.Add(new KeyContent(resitem.Id, resitem.FullName));
+            }
+        }
+
+        return true;
+    };
+    }
+
+    // remote search filter dropdown
+    // for use cases when there's an infinite amount of options (chefs in this example)
+    private RenderFragment chefRemoteFilterDropdown(ColumnState<Lunch> column)
+    {
+        var opt = new DropdownOpt
+                {
+                    ClearBtn = true,
+                    Data = chefsData,
+                    SearchFunc = getChefSearchFunc(column.Id)
+                };
+
+        return
+    @<ODropdownList Opt="opt" TKey="object"
+               ValueChanged="async val => await grid.State.FilterValChange(column.Id, val)"
+               Value="grid.State.GetFilterValue(column.Id)" />;
+    }
+    #endregion
+}

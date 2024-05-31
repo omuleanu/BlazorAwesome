@@ -1,0 +1,140 @@
+@page "/gridcheckboxes"
+@using Omu.BlazorAwesome.Core
+<OGrid Opt="gopt" />
+<p>
+    Selected:
+    <DispLog Obj="selected" />
+</p>
+
+@code
+{
+    private GridOpt<Lunch> gopt = new();
+
+    private List<int> selected = new();
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private RenderFragment renderChk(Lunch itm)
+    {
+        var value = selected.Contains(itm.Id);
+
+        return @<OCheckbox Value="value" ValueChanged="val => chkValueChange(itm, val)" />;
+    }
+
+    private RenderFragment renderHeaderChk()
+    {
+        var value = gopt.State.Items is null || 
+        gopt.State.Items.Count() == 0 ? false : gopt.State.Items.All(o => selected.Contains(o.Id));
+
+        return @<OCheckbox Value="value" ValueChanged="headerChkChange" />;
+    }
+
+    private void headerChkChange(bool val)
+    {
+        var currentPageKeys = gopt.State.Items.Select(o => o.Id);
+
+        foreach (var key in currentPageKeys)
+        {
+            selected.Remove(key);
+        }
+
+        if (val)
+        {
+            selected.AddRange(currentPageKeys);
+            return;
+        }
+    }
+
+    private void chkValueChange(Lunch itm, bool val)
+    {
+        if (val)
+        {
+            selected.Add(itm.Id);
+            return;
+        }
+
+        selected.Remove(itm.Id);
+    }
+
+    private void initGrid()
+    {
+        gopt.Height = 350;
+
+        gopt.KeyProp = m => m.Id;
+        gopt.GetQuery = () => Db.Lunches.AsQueryable();
+
+        gopt.RowClassFunc = itm =>
+        {
+            var clss = string.Empty;
+            if (selected.Contains(itm.Id))
+            {
+                clss = "awe-selected";
+            }
+
+            return clss;
+        };
+
+        // clear selection on load/page
+        //gopt.LoadFunc = () => selected.Clear();
+
+        gopt.Column(new()
+            {
+                Width = 75,
+                Render = renderChk,
+                HeaderRender = renderHeaderChk,
+                Resizable = false
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Id,
+                Width = 100
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Person,
+                Grow = 1.2,
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Food.Name,
+                Header = "Food",
+                Render = RenderComp.LunchImgFood
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Country.Name,
+                Header = "Country"
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Date,
+            });
+
+        gopt.Column(new()
+            {
+                Header = "Meals",
+                GetStr = o => string.Join(", ", o.Meals.Select(o => o.Name)),
+                Grow = 1.3
+            });
+
+        gopt.Column(new()
+            {
+                For = m => m.Location
+            });
+
+        gopt.Column(new()
+            {
+                Header = "Chef",
+                GetStr = o => o.Chef.FullName
+            })
+        .For(m => m.Chef.FirstName, m => m.Chef.LastName);
+    }
+}

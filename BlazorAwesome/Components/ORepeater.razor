@@ -1,0 +1,18 @@
+﻿@typeparam TItem
+@{
+    if (Items is null) return;
+    var list = Items.ToArray();
+}
+
+@for (var i = 0; i < list.Length; i++)
+{
+    @ChildContent(new() { Item = list[i], IsLast = i == list.Length - 1 })
+}
+
+@code {
+    [Parameter]
+    public IEnumerable<TItem> Items { get; set; }
+
+    [Parameter]
+    public RenderFragment<RepeaterPrm<TItem>> ChildContent { get; set; }
+}

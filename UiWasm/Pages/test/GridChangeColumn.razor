@@ -1,0 +1,80 @@
+@page "/gridchangecolumn"
+@if (dinners is not null)
+{
+    <ORadioList @bind-Value="Col1Style" Opt="@(new() { Data = styles })" />
+    <br />
+    <br />
+    <OGrid Opt="gopt" />
+}
+
+<div class="expl ntben">
+    Change column color on button click
+</div>
+
+<style>
+    .redcol, .redcol .awe-col {
+        color: red;
+    }
+
+    .greencol, .greencol .awe-col {
+        color: green;
+    }
+</style>
+
+@code
+{
+    private IEnumerable<Dinner> dinners;
+    private GridOpt<Dinner> gopt;
+
+    private string Col1Style
+    {
+        get { return gopt.Columns[1].CssClass; }
+        set
+        {
+            gopt.Columns[1].CssClass = value;
+            gopt.Columns[1].HeaderCssClass = value;
+        }
+    }
+
+    private IEnumerable<KeyContent> styles = new List<KeyContent>()
+    {
+        new KeyContent("redcol", "red"),
+        new KeyContent("greencol", "green"),
+    };
+
+    private async Task changeColor()
+    {
+        gopt.Columns[1].CssClass = "greencol";
+        gopt.Columns[1].HeaderCssClass = "greencol";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        initGrid();
+
+        dinners = Db.Dinners.ToArray();
+    }
+
+    private void initGrid()
+    {
+        gopt = new();
+        gopt.Height = 350;
+        gopt.KeyProp = m => m.Id;
+
+        gopt.GetQuery = () => dinners.AsQueryable();
+
+        gopt.Columns = new[] {
+            new Column<Dinner>()
+            {
+                For = o => o.Id,
+                Width = 100
+            },
+            new Column<Dinner>
+            {
+                For = o => o.Name,
+                CssClass = "redcol",
+                HeaderCssClass = "redcol"
+            }
+        };
+    }
+}

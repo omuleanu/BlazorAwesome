@@ -1,0 +1,35 @@
+﻿@typeparam TKey
+@inherits ORadioListNative<TKey>
+@{
+    base.BuildRenderTree(__builder);
+}
+@code {
+    protected override Task OnInitializedAsync()
+    {
+        displayClass = "o-rdl";
+        return base.OnInitializedAsync();
+    }
+
+    protected override RenderFragment DisplayMarkup()
+    {
+        // spaces/new line chars between o-chk and o-con will result in visible space between them (inline-block elements)
+        @if (getData is null) return null;
+
+        return 
+        @<ul>
+            @foreach (var item in getData)
+            {
+                var sel = Equals(item.Key, value);
+                var chkclass = sel ? "o-chked" : string.Empty;
+
+                <li class="o-chkm @(chkclass)">
+                    <label class="awe-label">
+                        <span tabindex="0" class="o-chk @(chkclass)"></span><input type="radio" checked="@(sel)" value="@item.Key"
+                        @onchange="@(async () => await setValAsync((TKey)item.Key))" 
+                        name="@name" style="display: none;" disabled="@IsDisabled" /><span class="o-con">@item.Content</span>
+                    </label>
+                </li>
+            }
+        </ul>;
+    }    
+}

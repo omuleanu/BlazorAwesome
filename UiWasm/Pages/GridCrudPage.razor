@@ -1,0 +1,188 @@
+@page "/gridcrud"
+@inject CachedItems cache;
+<div class="bar">
+    <OButton OnClick="create">Create</OButton>
+</div>
+
+<OGrid Opt="gopt" />
+
+<OPopupForm @ref="editPopup" Opt="new(){ Width = 700, Modal = true }">
+    <EditForm Model="@input" OnValidSubmit="@handleValidSubmit">
+        <DataAnnotationsValidator />
+        @*<ValidationSummary />*@
+        <OField For="() => input.Name">
+            <OTextbox @bind-Value="input.Name" />
+        </OField>
+        <OField For="() => input.Date">
+            <ODatePicker @bind-Value="input.Date" />
+        </OField>
+        <OField For="() => input.ChefId">
+            <ODropdownList @bind-Value="input.ChefId" Opt="new(){ DataFunc = cache.Chefs }" />
+        </OField>
+        <OField For="() => input.MealsIds">
+            <OMultiselect @bind-Value="input.MealsIds" Opt="new(){ DataFunc = cache.Meals }" />
+        </OField>
+        <OField Label="Bonus Meal" For="() => input.BonusMealId">
+            <ODropdownList @bind-Value="input.BonusMealId" Opt="new(){ DataFunc = cache.Meals }" />
+        </OField>
+    </EditForm>
+</OPopupForm>
+<OConfirm @ref="delPopup" ModOpt="setConfirmOpt">
+    Are you sure you want to delete dinner: <b>@delEntity.Name</b> ?
+</OConfirm>
+
+@code
+{
+    private OPopupForm editPopup;
+    private OConfirm delPopup;
+    private DinnerInput input = new();
+    private Dinner delEntity;    
+
+    private GridOpt<Dinner> gopt = new()
+        {
+            Height = 350,
+        };
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private void setConfirmOpt(PopupOpt opt)
+    {
+        opt.OnClose = async () =>
+        {
+            delEntity = null;
+            gopt.State.Render();
+        };
+    }
+
+    private async Task handleValidSubmit()
+    {
+        var create = input.Id is null;
+
+        var ent = create ? new() :
+            Db.Dinners
+            .First(o => o.Id == input.Id);
+
+        ent.Name = input.Name;
+        ent.Date = input.Date.Value;
+        ent.Chef = Db.Find<Chef>(input.ChefId);
+        
+        // ToList req for EF
+        ent.Meals = Db.Meals
+            .Where(o => input.MealsIds.Contains(o.Id)).ToList();
+
+        ent.BonusMeal = Db.Find<Meal>(input.BonusMealId);
+
+        if (create) 
+        {
+            Db.Add<Dinner>(ent);
+        }
+        else
+        {
+            Db.Update(ent);
+        }
+
+        await editPopup.CloseAsync();
+
+        await gopt.State.LoadAsync();
+
+        AweUtil.FlashRow(gopt, ent.Id);
+    }
+
+    private void confirmDelete(Dinner item)
+    {
+        delEntity = item;
+        delPopup.Open(async () =>
+        {
+            Db.Remove(delEntity);
+            await gopt.State.LoadAsync();
+        });
+    }
+
+    private async Task create()
+    {
+        input = new();
+        editPopup.Open();
+    }
+
+    private async Task edit(Dinner item)
+    {
+        var ent = Db.Dinners
+        .Single(o => o.Id == item.Id);
+
+        input = new DinnerInput
+            {
+                Id = ent.Id,
+                Name = ent.Name,
+                Date = ent.Date,
+                ChefId = ent.Chef?.Id,
+                MealsIds = ent.Meals?.Select(o => o.Id),
+                BonusMealId = ent.BonusMeal?.Id
+            };
+
+        editPopup.Open();
+    }
+
+    private void initGrid()
+    {
+        gopt.KeyProp = m => m.Id;
+        gopt.GetQuery = () => Db.Dinners.AsQueryable();
+
+        gopt.RowClassFunc = itm =>
+        {
+            if (itm is not null && delEntity == itm)
+            {
+                return "awe-hl";
+            }
+
+            return null;
+        };
+
+        gopt.Columns = new[] {
+            new Column<Dinner>()
+            {
+                For = o => o.Id,
+                Width = 100
+            },
+            new Column<Dinner>
+            {
+                For = o => o.Name,
+                Grow = 1.2
+            },
+            new Column<Dinner>
+            {
+                For = o => o.Date,
+            },
+            new Column<Dinner>
+            {
+                Header = "Chef"
+            }
+            .For(m => m.Chef.FirstName, m => m.Chef.LastName),
+            new Column<Dinner>
+            {
+                Header = "Meals",
+                GetStr = o => string.Join(", ", o.Meals.Select(m => m.Name)),
+                Grow = 2
+            },
+            new Column<Dinner>
+            {
+                Header = "Bonus Meal",
+                For = o => o.BonusMeal.Name
+            },
+            new Column<Dinner>
+            {
+                Width = 100,
+                Render = itm =>
+    @<OButton OnClick="async () => await edit(itm)">Edit</OButton>
+            },
+            new Column<Dinner>
+            {
+                Width = 100,
+                Render = itm =>
+    @<OButton OnClick="() => confirmDelete(itm)">Delete</OButton>
+            }
+    };
+    }
+}

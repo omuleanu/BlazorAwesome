@@ -1,0 +1,80 @@
+﻿@page "/RemoteSearch"
+@inject IDbContextFactory<MyContext> cxf
+
+<OField For="() => model.DropdownList">
+    <ODropdownList Opt="new(){ Data = items, SearchFunc = SearchFunc}"
+                   @bind-Value="model.DropdownList" />
+</OField>
+
+<OField For="() => model.Multicheck">
+    <OMulticheck Opt="new(){ Data = items, SearchFunc = SearchFunc}"
+               @bind-Value="model.Multicheck" />
+</OField>
+
+<OField For="() => model.Multiselect">
+    <OMultiselect Opt="new(){ Data = items, SearchFunc = SearchFunc}"
+                  @bind-Value="model.Multiselect" />
+</OField>
+<OField For="() => model.Combobox">
+    <OCombobox Opt="new(){ Data = items, SearchFunc = SearchFunc}"
+               @bind-Value="model.Combobox"/>
+</OField>
+<br />
+<br />
+<div class="expl">Load more results from the database when user stops typing</div>
+<RemoteSearchNoCache/>
+
+@code {
+    private RmtSearchInput model = new();    
+
+    private List<KeyContent> items = new();
+    private List<string> searchedTerms = new();
+
+    private async Task<bool> SearchFunc(string str)
+    {
+        str = str.Trim();
+        if (str.Length == 0) return false;
+
+        #region optional perf optim
+        // don't load when local results count > 10
+        if (items.Count(o => o.Content.Contains(str)) > 10) return false;
+
+        // don't load when term has already been used
+        if (searchedTerms.Contains(str)) return false;
+
+        // example don't search for "on" if there was already a search for "o"
+        if (searchedTerms.Any(term => str.Contains(term))) return false;
+
+        searchedTerms.Add(str);
+        #endregion
+
+        using var mcx = cxf.CreateDbContext();
+        var res = await mcx.Meals.Where(m => m.Name.Contains(str)).Take(10).ToArrayAsync();
+
+        foreach (var resitem in res)
+        {
+            if (!items.Select(o => o.Key).Contains(resitem.Id))
+            {
+                items.Add(new KeyContent(resitem.Id, resitem.Name));        
+            }
+        }
+
+        //await Task.Delay(500);
+        return true;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var mcx = cxf.CreateDbContext();
+        var initMeals = await mcx.Meals.Take(5).ToArrayAsync();
+        items.AddRange(initMeals.Select(o => new KeyContent(o.Id, o.Name)));
+    }
+
+    public class RmtSearchInput
+    {
+        public int? DropdownList { get; set; }
+        public IEnumerable<int> Multicheck { get; set; }
+        public IEnumerable<int> Multiselect { get; set; }
+        public object Combobox { get; set; }
+    }
+}

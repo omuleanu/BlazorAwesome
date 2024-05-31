@@ -1,0 +1,82 @@
+﻿@inject IJSRuntime JS
+@implements IDisposable
+
+<h2>Drag Handle</h2>
+
+<div class="board" @ref="cont">
+    @foreach (var c in cards)
+    {
+        <div class="card o-dragItm" data-k="@c.Id">
+            <div class="handle"></div>
+            <div class="big">@c.Name</div>
+        </div>        
+    }
+</div>
+<br />
+<div class="contDisp">
+    @foreach (var c in cards)
+    {
+        <ul>
+            <li>@c.Name</li>
+        </ul>
+    }
+</div>
+
+
+@code
+{
+    private ElementReference cont;
+    private DotNetObjectReference<DragAndDropHandle> objRef;
+
+    private List<Card> cards = new();
+    protected override void OnInitialized()
+    {
+        cards.Add(new Card() { Id = 1, Name = "a" });
+        cards.Add(new Card() { Id = 2, Name = "b" });
+        cards.Add(new Card() { Id = 3, Name = "c" });
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            objRef = DotNetObjectReference.Create(this);
+            await AweUtil.InitDragReorder(JS, new()
+            {
+                Cont = cont,                
+                Selector = ".card",
+                HandleSelector = ".handle",
+
+                ToCont = cont,
+
+                ObjRef = objRef,
+                DropMethod = nameof(MoveItem),
+            });            
+        }
+    }
+
+    [JSInvokable]
+    public async Task MoveItem(DropRes res)
+    {
+        var id = Convert.ToInt32(res.ItmKey);
+        var index = res.Index;
+
+        var card = cards.Single(o => o.Id == id);
+
+        cards.Remove(card);
+        cards.Insert(index, card);
+
+        StateHasChanged();
+    }
+
+    public class Card
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+}

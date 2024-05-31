@@ -1,0 +1,30 @@
+﻿@using Omu.BlazorAwesome.Core
+<OPopup @ref="popup" Opt="Opt">
+    <ChildContent>
+        @ChildContent
+    </ChildContent>
+    <Footer>
+        <button type="submit" class="awe-btn o-pbtn awe-okbtn" onclick="@(Consts.Aweclib).submitb(event)">@(Opt?.OkText ?? "OK")</button>
+        <OButton CssClass="awe-btn o-pbtn awe-sbtn" OnClick="popup.CloseAsync">@(Opt?.CancelText ?? OLangDict.Get(ODictKey.Cancel))</OButton>
+    </Footer>
+</OPopup>
+
+@code {
+    private OPopup popup;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public PopupFormOpt Opt { get; set; }
+
+    public async Task CloseAsync()
+    {
+        await popup.CloseAsync();
+    }
+
+    public void Open()
+    {
+        popup.Open();
+    }
+}

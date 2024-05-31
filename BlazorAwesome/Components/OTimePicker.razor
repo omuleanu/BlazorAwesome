@@ -1,0 +1,211 @@
+﻿@using Omu.BlazorAwesome.Components.Internal
+@using Omu.BlazorAwesome.Core
+@inherits OEditorBase<DateTime?>
+<div class="o-timepicker awe-timepicker-field awe-field o-cmped @fieldClass">
+    <div class="awe-elcont">
+        <OSelect Data="hoursData" Value="HourValue" ValueChanged="onHourChange" TKey="int" />
+        <OSelect Data="minutesData" Value="minuteValue" ValueChanged="onMinuteChange" TKey="int" />
+
+        @if (isAmPm)
+        {
+            <OSelect Data="amPmData" Value="AmpmValue" ValueChanged="onAmPmChange" TKey="string" />
+        }
+
+        @if (HasClearBtn)
+        {
+            <button class="awe-btn awe-clrbtn" type="button" @onclick="ClearValue" disabled="@IsDisabled"><span class="awe-icon awe-icon-x"></span></button>
+        }
+    </div>
+</div>
+<style>
+    .o-timepicker.o-cmped select.awe-display {
+        border: none;
+        border-radius: 0;
+    }
+</style>
+@code {
+
+    [Parameter]
+    public EditorWithClearOpt Opt { get; set; }
+
+    private int hourValue;
+    private int HourValue
+    {
+        get
+        {
+            if (isAmPm && hourValue == 0)
+            {
+                return 12;
+            }
+
+            return hourValue;
+        }
+        set { hourValue = value; }
+    }
+
+    private int minuteValue { get; set; }
+    private string ampmValue;
+    public string AmpmValue
+    {
+        get
+        {
+            if (ampmValue is null)
+            {
+                return ampmarray[0];
+            }
+
+            return ampmValue;
+        }
+        set { ampmValue = value; }
+    }
+
+    protected DateTime? value;
+
+    protected bool HasClearBtn => CompUtil.HasClearButton(Opt, OContext);
+
+    protected override string fieldClass
+    {
+        get
+        {
+            var res = base.fieldClass;
+
+            if (Opt?.CssClass is not null)
+            {
+                res += " " + Opt.CssClass;
+            }
+
+            return res;
+        }
+    }
+
+    public async Task onHourChange(int val)
+    {
+        hourValue = val;
+        await setValue();
+    }
+
+    public async Task onMinuteChange(int val)
+    {
+        minuteValue = val;
+        await setValue();
+    }
+
+    public async Task onAmPmChange(string val)
+    {
+        if (val == ampmarray[1])
+        {
+            ampmValue = ampmarray[1];
+        }
+        else
+        {
+            ampmValue = ampmarray[0];
+        }
+
+        await setValue();
+    }
+
+    public async Task ClearValue()
+    {
+        hourValue = 0;
+        minuteValue = 0;
+        ampmValue = ampmarray[0];
+        await setValue();
+    }
+
+    private async Task setValue()
+    {
+        var now = DateTime.Now;
+        var hv = HourValue;
+
+        if (isAmPm)
+        {
+            if (ampmValue == ampmarray[0])
+            {
+                // am
+                if (hv == 12) hv = 0;
+            }
+            else
+            {
+                // pm
+                if (hv < 12)
+                {
+                    hv += 12;
+                }
+            }
+        }
+
+        value = new DateTime(now.Year, now.Month, now.Day, hv, minuteValue, 0);
+        await ValueChanged.InvokeAsync(value);
+        await afterChange();
+        FieldChanged();
+    }
+
+    [Parameter]
+    public DateTime? Value
+    {
+        get => value;
+        set
+        {
+            this.value = value;
+        }
+    }
+
+    protected async override Task OnParametersSetAsync()
+    {
+        if (value == null)
+        {
+            value = new DateTime();
+            await setValue();
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    [Parameter]
+    public EventCallback<DateTime?> ValueChanged { get; set; }
+
+    private IEnumerable<KeyContent> amPmData
+    {
+        get
+        {
+            var culture = CompUtil.CurrentCulture();
+            var cformat = culture.DateTimeFormat;
+
+            return ampmarray.Select(o => new KeyContent(o, o));
+        }
+    }
+
+    private string[] ampmarray
+    {
+        get
+        {
+            var culture = CompUtil.CurrentCulture();
+            var cformat = culture.DateTimeFormat;
+
+            return new[] { cformat.AMDesignator, cformat.PMDesignator }.ToArray();
+        }
+    }
+
+    private bool isAmPm => CompUtil.CurrentCulture().DateTimeFormat.ShortTimePattern.Contains("h");
+
+    private IEnumerable<KeyContent> hoursData
+    {
+        get
+        {
+            if (isAmPm)
+            {
+                return Enumerable.Range(1, 12).Select(o => new KeyContent(o, o.ToString("D2")));
+            }
+
+            return Enumerable.Range(0, 24).Select(o => new KeyContent(o, o.ToString("D2")));
+        }
+    }
+
+    private IEnumerable<KeyContent> minutesData
+    {
+        get
+        {
+            return Enumerable.Range(0, 60).Select(o => new KeyContent(o, o.ToString("D2")));
+        }
+    }
+}

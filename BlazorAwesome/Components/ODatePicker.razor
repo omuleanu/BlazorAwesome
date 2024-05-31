@@ -1,0 +1,318 @@
+﻿@using Omu.BlazorAwesome.Components.Internal
+@using Omu.BlazorAwesome.Core
+@implements IAsyncDisposable
+@inject IJSRuntime JS;
+@inherits OEditorBase<DateTime?>
+<div @ref="field" class="awe-datepicker-field awe-field o-txtf o-cmped @fieldClass">
+    <div class="awe-elcont">
+        <input @onchange="onChange"
+               @oninput="onInput"
+               @onfocusout="() => { inputValue = null; }"
+               @onclick="openPopup"
+               @ref="inpRef"
+               placeholder="@Placeholder"
+               value="@InputValue"
+               disabled="@IsDisabled"
+               class="awe-dtp awe-display awe-val awe-txt" size="1" type="text" autocomplete="off" />
+        <button type="button" class="awe-btn awe-dpbtn o-tofoc" aria-label="open" @onclick="openPopup" disabled="@IsDisabled">
+            <span class="awe-icon awe-icon-datepicker"></span>
+        </button>
+        @if (HasClearBtn)
+        {
+            <button class="awe-btn awe-clrbtn" type="button" @onclick="ClearValue" disabled="@IsDisabled"><span class="awe-icon awe-icon-x"></span></button>
+        }
+    </div>
+</div>
+<OPopup @ref="popup" Opt="popupOpt">
+    @{
+        var wdays = weekDays();
+    }
+    <div class="o-dtp" style="">
+        <div class="o-mnth" data-i="0">
+            <div class="o-mtop">
+                <button type="button" class="awe-btn o-mprv" @onclick="goPrevMonth"><i class="o-arw left"></i></button>
+                <div class="o-ym">
+                    <OContext>
+                        <div class="o-mhd">
+                            <ODropdownList @bind-Value="CurrentMonth" Opt="@(new() { CssClass = "o-cm", Data = monthsData, ClearBtn = false, AfterChangeFunc = null })" />
+                        </div>
+                        <div class="o-yhd">
+                            <ODropdownList @bind-Value="CurrentYear" Opt="@(new() { CssClass = "o-cy", Data = yearsData})" />
+                        </div>
+                    </OContext>
+                </div>
+                <button type="button" class="awe-btn o-mnxt" @onclick="goNextMonth"><i class="o-arw right"></i></button>
+            </div>
+            <table class="o-tb" data-month="@crdate.Month">
+                <tr class="o-wdays">
+                    @foreach (var wd in wdays)
+                    {
+                        <td>@wd</td>
+                    }
+                </tr>
+
+                @{
+                    var day = AweDateUtil.FirstDayOfCalendar(crdate, fdw);
+                    var rows = 0;
+                    while (rows < 6)
+                    {
+                        <tr>
+                            @for (var i = 0; i < 7; i++, day = day.AddDays(1))
+                            {
+                                var sameMonth = day.Month == crdate.Month;
+                                var cclass = sameMonth ? "o-mday o-enb" : "o-outm";
+
+                                if (value?.Date == day.Date)
+                                {
+                                    cclass += " o-selday";
+                                }
+
+                                if (day.Date == DateTime.Now.Date)
+                                {
+                                    cclass += " o-tday";
+                                }
+
+                                var d1 = day;
+
+                                if (sameMonth)
+                                {
+                                    <td class="o-day @cclass" @onclick="() => dayClick(d1)">
+                                        <div>@day.Day</div>
+                                    </td>
+                                }
+                                else
+                                {
+                                    <td class="o-day @cclass">
+                                        <div>@day.Day</div>
+                                    </td>
+                                }
+                            }
+                        </tr>
+                        rows++;
+                    }
+                }
+            </table>
+            <div class="o-cldbar">
+                <button type="button" class="awe-btn" @onclick="async () => await clearDate()">@OLangDict.Get(ODictKey.Clear)</button>
+                <button type="button" class="awe-btn" @onclick="async () => await setToday()">@OLangDict.Get(ODictKey.Today)</button>
+            </div>
+        </div>        
+    </div>
+    @*@crdate*@
+</OPopup>
+@*val: @value*@
+
+@code {
+    private OPopup popup;
+    private ElementReference field;
+    private ElementReference inpRef;
+    private DayOfWeek fdw = CompUtil.CurrentCulture().DateTimeFormat.FirstDayOfWeek;
+    private PopupOpt popupOpt = new() { Dropdown = true, NoFocus = true, PopupClass = "o-dtpp o-ddp" };//o-dtpPop
+    private DotNetObjectReference<ODatePicker> objRef;
+
+    [Parameter]
+    public DatePickerOpt Opt { get; set; }
+
+    private string Placeholder => Opt?.Placeholder;
+
+    protected DateTime? value;
+
+    private string inputValue;
+
+    protected bool HasClearBtn => CompUtil.HasClearButton(Opt, OContext);
+
+    protected override string fieldClass
+    {
+        get
+        {
+            var res = base.fieldClass;
+
+            if (Opt?.CssClass is not null)
+            {
+                res += " " + Opt.CssClass;
+            }
+
+            return res;
+        }
+    }
+
+    public string InputValue => inputValue ?? value?.ToShortDateString();
+
+    public void onInput(ChangeEventArgs args)
+    {
+        var v = args.Value.ToString();
+
+        if (DateTime.TryParse(v, out DateTime res))
+        {
+            this.value = res;
+            crdate = res;
+        }
+
+        inputValue = v;
+    }
+
+    public async Task onChange(ChangeEventArgs args)
+    {
+        var v = args.Value.ToString();
+
+        if (DateTime.TryParse(v, out DateTime res))
+        {
+            await setValue(res);
+        }
+        else
+        {
+            await setValue(null);
+        }
+
+        inputValue = null;
+    }
+
+    public async Task ClearValue()
+    {
+        await setValue(null);
+    }
+
+    private async Task setValue(DateTime? res)
+    {
+        this.value = res;
+        crdate = res ?? DateTime.Now;
+        await ValueChanged.InvokeAsync(res);
+        await afterChange();
+        FieldChanged();
+    }
+
+    [Parameter]
+    public DateTime? Value
+    {
+        set
+        {
+            this.value = value;
+            crdate = value ?? DateTime.Now;
+        }
+
+        get
+        {
+            return value;
+        }
+    }
+
+    [Parameter]
+    public EventCallback<DateTime?> ValueChanged { get; set; }
+
+    #region Calendar
+
+    private async Task setToday()
+    {
+        await setValue(DateTime.Now);
+        await popup.CloseAsync();
+    }
+
+    private async Task clearDate()
+    {
+        await setValue(null);
+        await popup.CloseAsync();
+    }
+
+    private async Task dayClick(DateTime d)
+    {
+        await setValue(d);
+        await popup.CloseAsync();
+    }
+
+    private void goNextMonth()
+    {
+        crdate = crdate.AddMonths(1);
+    }
+
+    private void goPrevMonth()
+    {
+        crdate = crdate.AddMonths(-1);
+    }
+
+    private int CurrentMonth
+    {
+        get => crdate.Month;
+        set => crdate = new DateTime(crdate.Year, value, crdate.Day);
+    }
+
+    private int CurrentYear
+    {
+        get => crdate.Year;
+        set => crdate = new DateTime(value, crdate.Month, crdate.Day);
+    }
+
+    private DateTime crdate = DateTime.Now;
+
+    private string[] weekDays()
+    {
+        var cc = CompUtil.CurrentCulture();
+        var fday = (int)cc.DateTimeFormat.FirstDayOfWeek;
+        var val = CompUtil.CurrentCulture().DateTimeFormat.AbbreviatedDayNames;
+        if (fday != 0)
+        {
+            val = val.Skip(fday).Concat(val.Take(fday)).ToArray();
+        }
+
+        return val;
+    }
+
+    private KeyContent[] yearsData
+    {
+        get
+        {
+            return Enumerable.Range(crdate.Year - 15, 30)
+                .Select(o => new KeyContent(o, o))
+                .ToArray();
+        }
+    }
+
+    private KeyContent[] monthsData
+    {
+        get
+        {
+            return Enumerable.Range(1, 12)
+                .Select(i => new KeyContent
+                    {
+                        Key = i,
+                        Content = CompUtil.CurrentCulture().DateTimeFormat.GetMonthName(i)
+                    })
+                .ToArray();
+        }
+    }
+    #endregion
+
+    private void openPopup()
+    {
+        popup.Open(new PopupOpenPrm { Opener = field }); //, NoFocus = true
+    }
+
+    private bool rendered;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            rendered = true;
+            objRef = DotNetObjectReference.Create(this);
+            await JSUtil.InvokeVoidAsync(JS, CompUtil.AweJs("dtpbz"), new { field = field, objRef });
+        }
+    }
+
+    protected override Task OnInitializedAsync()
+    {
+        popupOpt.OnOpen = async () =>
+        {
+            await JS.InvokeVoidAsync(CompUtil.AweJs("dtpbz"), new { field = field, popup = popup.PopupRef });
+        };
+
+        return base.OnInitializedAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        objRef?.Dispose();
+
+        if (!rendered) return;
+
+        await CompUtil.TryDestroy(JS, field);
+    }
+}

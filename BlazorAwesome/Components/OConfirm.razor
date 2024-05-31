@@ -1,0 +1,69 @@
+﻿@using Omu.BlazorAwesome.Core
+<OPopup Opt="popt" @ref="popup">
+    <ChildContent>
+        <div style="padding: 0 3em;"> @ChildContent</div>
+    </ChildContent>
+    <Footer>
+        <OButton CssClass="o-pbtn awe-okbtn" OnClick="YesClick">@OLangDict.Get(ODictKey.Yes)</OButton>
+        <OButton CssClass="awe-sbtn o-pbtn" OnClick="async () => await popup.CloseAsync()">@OLangDict.Get(ODictKey.No)</OButton>
+    </Footer>
+</OPopup>
+
+@code {
+    private OPopup popup;
+
+    private Func<Task> onConfirm;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public Action<PopupOpt> ModOpt
+    {
+        set
+        {
+            value(popt);
+        }
+
+        get
+        {
+            return null;
+        }
+    }
+
+    private PopupOpt popt { get; set; } = new()
+        {
+            Modal = true,
+            OutClickClose = true,
+            Width = 500,
+            Height = 170
+        };
+
+    private async Task YesClick()
+    {
+        await onConfirm();
+        await popup.CloseAsync();
+    }
+
+    public async Task CloseAsync()
+    {
+        await popup.CloseAsync();
+    }
+
+    public void Open(Func<Task> action)
+    {
+        onConfirm = action;
+        var onclose = popt.OnClose;
+        popt.OnClose = async () =>
+        {
+            if (onclose != null)
+            {
+                await onclose();
+            }
+
+            onConfirm = null;            
+        };
+
+        popup.Open();
+    }
+}

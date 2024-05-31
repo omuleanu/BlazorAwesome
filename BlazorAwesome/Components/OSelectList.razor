@@ -1,0 +1,109 @@
+﻿@using Omu.BlazorAwesome.Components.Internal
+@using Omu.BlazorAwesome.Core
+@typeparam TKey
+@inherits OEditorBase<IEnumerable<TKey>>
+
+<div @ref="field" class="@Opt?.CssClass o-smenu">
+    @if (showSearch)
+    {
+        <div class="o-srcc o-ldngp">
+            <OWrap>
+                <input @bind="FilterStr" @bind:event="oninput" disabled="@IsDisabled"
+                   type="text" class="o-src awe-txt" placeholder="@OLangDict.Get(ODictKey.Search)..." size="1">
+            </OWrap>
+        </div>
+    }
+    <OSList Value="values" TKey="TKey" @ref="slist"
+            Opt="@(new(){
+                Data = Opt?.Data,
+                SingleSelect = !multiple,
+                ItemRender = Opt?.ItemFunc,
+                OnItemSelected = onItemSelected,
+                ItemsContStyle = Opt?.ItemsContStyle ?? "height: 250px",
+                Disabled = IsDisabled,
+                FilterPredicate = Opt?.FilterPredicate,
+                FocusClass = Opt?.FocusClass,
+                ItemClass = Opt?.ItemClass,
+                SelectedClass = Opt?.SelectedClass,
+                ItemHoverFocus = Opt?.ItemHoverFocus is true
+                })" />
+</div>
+<style>
+    .o-smenu {
+        list-style: none;
+    }
+
+        .o-smenu .o-itsc {
+            overflow: auto;
+        }
+</style>
+@code {
+    private bool showSearch = true;
+    private bool multiple => Opt?.Multiple ?? false;
+    private ElementReference field;
+    private OSList<TKey> slist;
+
+    protected IList<object> values = new List<object>();
+
+    private string FilterStr
+    {
+        get => slist.FilterStr;
+
+        set
+        {
+            slist.FilterStr = value;
+        }
+    }
+
+    public void Render()
+    {        
+        StateHasChanged();
+    }
+
+    [Parameter]
+    public SelectListOpt Opt { get; set; }
+
+    [Parameter]
+    public IEnumerable<TKey> Value
+    {
+        set
+        {
+            values.Clear();
+            if (value != null)
+            {
+                values.AddArray(value.Cast<object>());
+            }
+        }
+
+        get
+        {
+            return values.Cast<TKey>();
+        }
+    }
+
+    [Parameter]
+    public EventCallback<IEnumerable<TKey>> ValueChanged { get; set; }
+
+    private async Task onItemSelected(ItemSelectedPrm args)
+    {
+        values.Clear();
+        values.AddArray(args.Value);
+
+        await ValueChangedInvoke();
+    }
+
+    private async Task ValueChangedInvoke()
+    {
+        var v = values.ToArray();
+        await ValueChanged.InvokeAsync(v.Any() ? v.Cast<TKey>().ToArray() : null);
+        await triggerChange();
+    }
+
+    protected async Task triggerChange()
+    {
+        await afterChange();
+
+        StateHasChanged();
+        FieldChanged();
+    }
+}

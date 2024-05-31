@@ -1,0 +1,398 @@
+﻿@typeparam T
+@{
+    if (Model is null) return;
+    var depthDelta = Model.NodeType == NodeType.Undefined ? 1 : 0; // -1 depth for non nodes
+    var gcolspan = State.VisibleColumns.Count() + State.Model.TreeHeight - (Model.Depth - depthDelta);
+
+    var collapsed = false;
+
+    if (Model.Header is not null)
+    {
+        collapsed = Model.Header.Collapsed;
+
+        if (State.CollapsedHeaders.ContainsKey(Model.Key))
+        {
+            collapsed = State.CollapsedHeaders[Model.Key].Item1;
+        }
+    }
+
+    altRow = true;
+    int? itemColspan = State.Model.TreeHeight - Model.Depth + 1;
+    if (itemColspan == 1) itemColspan = null;
+}
+
+@if (Model.Depth == 0 && Model.NodeType == NodeType.Undefined)
+{
+    @if (State.HasNesting)
+    {
+        var topNests = State.Nesting.OpenedNests.Values.Where(o => o.IsTop == true);
+        @foreach (var tn in topNests)
+        {
+            @renderNestMarkup(tn, tn.Key, State.Groups.Count())
+        }
+    }
+
+    // render inline create rows
+    @if (State.InlineEdit is not null)
+    {
+        @foreach (var cx in State.InlineEdit.GetCreateStates().Where(o => o.ParentKey is null))
+        {
+            @renderInlineCreateItem(cx, itemColspan)
+            ;
+        }
+    }
+}
+
+@if (Model.Header is not null)
+{
+    var headerClass = " awe-ghead awe-ceb " + (collapsed ? "awe-collapsed" : string.Empty);
+    //<tr class="awe-ghead awe-ceb @headerClass">
+    //    <td colspan="@gcolspan">
+    //        <div class="awe-ghcon">
+    //            cols: @Opt.VisibleColumns.Count(), Depth: @Model.Depth;
+    //        </div>
+    //    </td>
+    //</tr>
+    if (Model.Header.Item is not null)
+    {
+        @renderItem(Model.Header.Item, itemColspan, true, headerClass)
+    }
+    else
+    {        
+        <tr class="@headerClass">
+            @for (var i = 0; i < Model.Depth - depthDelta; i++)
+            {
+                <td class="awe-idn"></td>
+                /*@Model.Depth*/
+            }
+            @if (Model.Header.Content is not null)
+            {
+                <td colspan="@gcolspan" @onclick="collapseClick">
+                    <div class="awe-ghcon">
+                        <i class="awe-cbc awe-nonselect"><i class="awe-ce-ico"></i></i>
+                        @Model.Header.Content
+                    </div>
+                </td>
+            }
+            else
+            {
+                @renderCells(Model.Header.Item, State.Model.TreeHeight - Model.Depth +1, true)
+            }
+        </tr>
+    }
+
+    @if (Model.Header.Item is not null && State.HasNesting)
+    {
+        @renderItemNest(Model.Header.Item)
+    }
+}
+
+@if (State.InlineEdit is not null && Model.Key is not null)
+{
+    @foreach (var cx in State.InlineEdit.GetCreateStates().Where(o => o.ParentKey == Model.Key))
+    {
+        @renderInlineCreateItem(cx, itemColspan)
+        ;
+    }
+}
+
+@if (Model.Items != null && !collapsed)
+{
+    @foreach (var item in Model.Items)
+    {
+        @renderItem(item, itemColspan)
+
+        @if (State.InlineEdit is not null)
+        {
+            @foreach (var cx in State.InlineEdit.GetCreateStates().Where(o => o.ParentKey == State.GetKey(item)))
+            {
+                @renderInlineCreateItem(cx, itemColspan)
+                ;
+            }
+        }
+
+        if (State.HasNesting)
+        {
+            @renderItemNest(item)
+        }
+    }
+
+    @if (Model.Footer is not null)
+    {
+        @renderFooter(Model.Footer, itemColspan)
+    }
+}
+else if (Model.Groups != null && !collapsed)
+{
+    @foreach (var groupView in Model.Groups)
+    {
+        <OGroupView Model="groupView" Data="Data" />
+    }
+}
+
+
+@code {
+    private bool altRow;
+
+    [Parameter]
+    public GroupViewData<T> Data { get; set; }
+
+    [Parameter]
+    public GroupView<T> Model { get; set; }
+
+    public GridOpt<T> Opt => Data.Opt;
+
+    public GridState<T> State => Data.State;
+
+    private string itmClass(T itm)
+    {
+        altRow = !altRow;
+
+        var res = string.Empty;
+
+        if (altRow) res += " awe-alt ";
+
+        if (Opt.RowClassFunc is not null)
+        {
+            res += Opt.RowClassFunc(itm);
+        }
+
+        return res;
+    }
+
+    private RenderFragment renderItem(T itm, int? colspan, bool header = false, string headerCssClass = null)
+    {
+        EditItemState<T> itemState = null;
+
+        string key = null;
+        if (Opt.HasKey())
+        {
+            key = State.GetKey(itm);
+
+            if (State.InlineEdit is not null)
+            {
+                itemState = State.InlineEdit.GetItemState(key);
+            }
+        };
+
+        return
+        @<tr data-k="@key" class="awe-row @itmClass(itm) @headerCssClass">
+        @itemIdn(Model.Depth)
+        @if (itemState is null)
+        {
+            @renderCells(itm, colspan, header)
+        }
+        else
+        {
+            @renderInlineCells(itemState, colspan, header)
+        }
+    </tr>;
+    }
+
+    private RenderFragment renderFooter(GroupFooter gfoot, int? cspan)
+    {
+        return
+    @<tr class="awe-row awe-gfoot">
+        @itemIdn(Model.Depth)
+        @renderFooterCells(gfoot, cspan)
+    </tr>;
+    }
+
+    private RenderFragment itemIdn(int depth)
+    {
+        return
+    @<text>
+        @for (var i = 0; i < depth; i++)
+        {
+            <td class="awe-idn"></td>
+        }
+    </text>
+        ;
+    }
+
+    private RenderFragment renderItemNest(T itm)
+    {
+        var key = State.GetKey(itm);
+        if (!State.Nesting.OpenedNests.ContainsKey(key)) return null;
+        var nst = State.Nesting.OpenedNests[key];
+        return renderNestMarkup(nst, key, Model.Depth);
+    }
+
+    private RenderFragment renderNestMarkup(Nest nst, object key, int depth)
+    {
+        var cspan = State.VisibleColumns.Count() + State.Model.TreeHeight - depth;
+        return
+    @<text>
+        <tr class="awe-nest">
+            @itemIdn(depth)
+            <td class="awe-nestcell" colspan="@cspan">
+                @nst.Render
+            </td>
+        </tr>
+    </text>;
+    }
+
+    private RenderFragment renderInlineCells(EditItemState<T> cx, int? colspan = null, bool node = false)
+    {
+        var colix = 0;
+        return @<CascadingValue Value="cx.EditContext">
+        @foreach (var cs in State.VisibleColumns)
+        {
+            var cspan = colix == 0 ? colspan : null;
+            <td colspan="@cspan">
+                @if (node && colix == 0)
+                {
+                    @renderCollapseButton()
+                }
+                @if (cs.Column.GetEditor() != null)
+                {
+                    @renderInlineCellContent(cx, cs.Column)
+                    ;
+                }
+                else
+                {
+                    @renderCellContent(cs.Column, cx.Item)
+                }
+            </td>
+            colix++;
+        }
+    </CascadingValue>;
+    }
+
+    private RenderFragment renderCells(T itm, int? colspan = null, bool node = false)
+    {
+        var colix = 0;
+        return
+    @<text>
+        @foreach (var cs in State.VisibleColumns)
+        {
+            var cspan = colix == 0 ? colspan : null;
+
+            <td colspan="@cspan" class="@(cs.Column.CssClass)">
+                @if (node && colix == 0)
+                {
+                    @renderCollapseButton()
+                }
+                @renderCellContent(cs.Column, itm)
+            </td>
+            colix++;
+        }
+    </text>;
+    }
+
+    private RenderFragment renderFooterCells(GroupFooter gfoot, int? colspan = null)
+    {
+        var colix = 0;
+        return
+    @<text>
+        @foreach (var cs in State.VisibleColumns)
+        {
+            var cspan = colix == 0 ? colspan : null;
+            <td colspan="@colspan" class="@(cs.Column.CssClass)">
+                @renderFooterCell(cs.Column, gfoot)
+            </td>
+            colix++;
+        }
+    </text>;
+    }
+
+    private RenderFragment renderCollapseButton()
+    {
+        return
+    @<text><i class="awe-cbc awe-nonselect" @onclick="collapseClick"><i class="awe-ce-ico"></i></i></text>
+    ;
+    }
+
+    private async Task collapseClick()
+    {
+        if (Model.NodeType == NodeType.Lazy)
+        {
+            Model.Header.Collapsed = !Model.Header.Collapsed;
+            await State.LoadAsync(new() { Partial = true, LazyItem = Model.Header.Item });
+            //await Opt.LoadLazyNodeAsync(Model.Header.Item);
+            return;
+        }
+
+        if (State.CollapsedHeaders.ContainsKey(Model.Key))
+        {
+            State.CollapsedHeaders.Remove(Model.Key);
+        }
+        else
+        {
+            var val = Model.Header.Collapsed;
+            State.CollapsedHeaders.Add(Model.Key, new(!val, Model.GroupColumns));
+        }
+    }
+
+    private RenderFragment renderCellContent(Column<T> c, T itm)
+    {
+        return
+    @<text>
+        @if (c.Render != null)
+        {
+            @c.Render(itm)
+        }
+        else
+        {
+            @CompUtil.GetColumnItmStr(c, itm)
+        }
+    </text>;
+    }
+
+    private RenderFragment renderFooterCell(Column<T> c, GroupFooter gfoot)
+    {
+        if (c.Bind is not null && gfoot.Values.ContainsKey(c.Bind))
+        {
+            return@<text>@gfoot.Values[c.Bind]</text>;
+        }
+
+        return null;
+    }
+
+    private RenderFragment renderInlineCells(EditItemState<T> cx)
+    {
+        return
+    @<CascadingValue Value="cx.EditContext">
+        @foreach (var cs in State.VisibleColumns)
+        {
+            <td class="@(cs.Column.CssClass)">
+                @if (cs.Column.GetEditor()?.Render != null)
+                {
+                    @renderInlineCellContent(cx, cs.Column);
+                }
+                else
+                {
+                    @renderCellContent(cs.Column, cx.Item)
+                }
+            </td>
+        }
+    </CascadingValue>;
+    }
+
+    private RenderFragment renderInlineCellContent(EditItemState<T> itemState, Column<T> column)
+    {
+        var editor = column.GetEditor();
+
+        return
+    @<text>
+        @if (editor is not null)
+        {
+            if (editor.Render != null)
+            {
+                @editor.Render(new ColumnEditorContext<T>{ Column = column, EditItemState = itemState });
+            }
+        }
+    </text>;
+    }
+
+    private RenderFragment renderInlineCreateItem(EditItemState<T> cx, int? colspan, bool header = false)
+    {
+        var idn = State.Groups.Count();
+
+        return
+    @<tr @key="cx.Key" data-k="@cx.Key" class="awe-row @itmClass(cx.Item)">
+        @itemIdn(Model.Depth)
+        @renderInlineCells(cx, colspan, header)
+    </tr>;
+    }
+}
