@@ -327,7 +327,6 @@
 }
 
 /* pager */
-
 .awe-pager .awe-btn {
     height: inherit;
     padding: 7px 12px;
@@ -353,6 +352,10 @@
 	flex-grow: 1;
 	display: flex;
 	flex-flow: column;
+}
+
+.awe-content.awe-tablc {
+    flex: 1;
 }
 
 .awe-tablc {    
@@ -472,7 +475,7 @@
     line-height: 2.2em;
 }
 
-.awe-row td, .awe-ghead, .awe-gfoot, .awe-nest td {
+.awe-row td, .awe-ghead, .awe-gfoot td, .awe-nest td {
     background: #fff;
 }
 
@@ -511,6 +514,10 @@
     background: #f7f7f7;
 }
 
+.o-hasch td, .o-hasch.awe-alt td {
+    background: #f5ecff;
+}
+
 .awe-grid .awe-footer {    
     padding: 0.3em;    
 	border-top: 1px solid #ccc;
@@ -526,6 +533,7 @@
 
 .awe-grid .awe-pager, .awe-grid .awe-relbox {
     vertical-align: middle;
+    display: inline-flex;
 }
 
 .awe-reload {
@@ -541,7 +549,7 @@
 
 
 .awe-footer button.awe-btn:hover, .awe-grid .awe-sortable:hover {
-     background: whitesmoke;   
+     background: whitesmoke;
     }    
 
 
@@ -756,7 +764,7 @@ input.awe-display.awe-txt {
 	box-shadow: 0 1px 0 rgba(255,255,255,.5), 0 1px 0 rgba(0,0,0,.07) inset;
 }
 
-input[type="text"].awe-txt:focus{
+input.awe-txt:focus {
     outline: none;
 }
 
@@ -786,7 +794,7 @@ input[type="text"].awe-txt.awe-disabled,
 
 .awe-spincont {    
     width: 2.2em;
-    border-radius: 0 8px 8px 0;
+    border-radius: 0;
     padding: 0;
     box-sizing: border-box;	
 	flex-shrink: 0;
@@ -825,6 +833,7 @@ input[type="text"].awe-txt.awe-disabled,
     top: 50%;
     left: 50%;
     margin-top: -2px;
+    color: black;
 }
 
 .awe-spindown-ico {
@@ -842,6 +851,43 @@ input[type="text"].awe-txt.awe-disabled,
     top: 50%;
     left: 50%;
     margin-top: -2px;
+    color: black;
+}
+
+.awe-btn.awe-spinbtn {
+    font-size: 0;
+}
+
+.awe-leftSpin {
+    display: none;
+}
+
+.awe-bigSpin .awe-leftSpin {
+    display: block;
+}
+
+.awe-bigSpin .awe-rightSpin .awe-spindown {
+    display: none;
+}
+
+.awe-bigSpin .awe-btn.awe-spinbtn {
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.awe-bigSpin .awe-spinup-ico, .awe-bigSpin .awe-spindown-ico {
+    margin: 0;
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    border: none !important;
+    font-size: 26px;
+}
+
+.awe-bigSpin .awe-txt {
+    text-align: center;
 }
 
 /* tabs */
@@ -1012,6 +1058,10 @@ input[type="text"].awe-txt.awe-disabled,
 	width: 100%;
 }
 
+.o-small input[type="text"].o-src {
+    padding: 0;
+}
+
 /* dropdown search msg */
 .o-srcldmsg {
     padding: 0 27px;
@@ -1056,12 +1106,8 @@ input[type="text"].awe-txt.awe-disabled,
     opacity: 0.7;
     -moz-user-select: none;
     -webkit-user-select: none;
-    -ms-user-select: none;
-}
-
-    .o-cls:hover {
-        opacity: 1;
-    }
+    -ms-user-select: none; 
+}    
 
 .o-menu {
     display: none;
@@ -1281,6 +1327,10 @@ input[type="text"].awe-txt.awe-disabled,
 
 
 
+.o-hid {
+    display: none;
+}
+
 .awe-loading.o-hid {
     display:none;
 }
@@ -1472,10 +1522,18 @@ input.o-cbxt[type="text"] {
 }
 
 .o-phdr .o-cls {
-    font-size: 21px;
-    padding: .5em 1em;
-    font-size: 1.3em;
+    margin: 3px 5px;
+    font-size: 3em;
+    line-height: 38px;
+    font-family: serif;
+    color: #606770;
+    padding: 0 7px;
 }
+
+.o-phdr .o-cls:hover {
+        opacity: 1;
+        border-radius: 100%;
+    }
 
 .o-pc {
     padding: .7em;
@@ -1669,8 +1727,8 @@ input.o-cbxt[type="text"] {
 /* custom loading */
 
 .o-gempt, .o-ldrpg {    
-    font-size: 5em;
-    color: gainsboro;
+    font-size: 2em;
+    color: gray;
     text-align: center;	
 }
 
@@ -1680,12 +1738,12 @@ input.o-cbxt[type="text"] {
 	position: absolute;
 	top: 50%;
 	transform: translateY(-50%);
-	min-height: 150px;
+	min-height: 50px;
 }
 
 @media (max-width: 1280px) {
     .o-gempt {
-        font-size: 3em;
+        font-size: 1.5em;
     }
 }
 
@@ -1846,9 +1904,13 @@ input.o-cbxt[type="text"] {
     
     
     
-        .awe-spincont, .o-cbxbtn, .o-txtf .awe-clrbtn, .awe-dpbtn {
+        .awe-rightSpin, .o-cbxbtn, .o-txtf .awe-clrbtn, .awe-dpbtn {
             border-inline-start: 1px solid gainsboro !important;
         }       
+        
+        .awe-leftSpin {
+            border-inline-end: 1px solid gainsboro !important;
+        }
     
     
     
@@ -1859,7 +1921,7 @@ input.o-cbxt[type="text"] {
     
         
 
-    .o-cmped input[type=text].awe-txt {
+    .o-cmped input.awe-txt {
         background: none;
         border: none;
         box-shadow: none;
@@ -1905,7 +1967,7 @@ input.o-cbxt[type="text"] {
     }
 
     .awe-footer .awe-btn {
-        background: transparent;
+        background: transparent !important;
         color: black;
     }
     
