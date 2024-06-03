@@ -88,7 +88,125 @@ var awef = function ($) {
         }
     }
 
-    return {  
+    function getFunc(fdecl) {//, context
+        if (typeof fdecl != 'string') {
+            return fdecl;
+        }
+
+        if (!fdecl) return;
+
+        var fname = fdecl;
+        var fargs = null;
+
+        var parts = getDeclFuncParts(fdecl);
+
+        if (parts.length > 1) {
+            fname = parts[0];
+            fargs = getArgs(parts[1]);
+        }
+
+        var context = window;
+        var namespaces = fname.split(".");
+        var func = namespaces.pop();
+        for (var i = 0; i < namespaces.length; i++) {
+            context = context[namespaces[i]];
+        }
+
+        var res;
+
+        if (func == 'null') { res = null; }
+        else if (func == 'undefined') { res = undefined; }
+        else {
+            res = context[func];
+            if (!res) {
+                throw "could not find " + func + " " + fdecl;
+            }
+
+            if (fargs) {
+                var r1 = res.apply(window, fargs);
+                return r1;
+            }
+        }
+
+        return res;
+    }
+
+    function getDeclFuncParts(str) {
+        var prnti = str.indexOf('(');
+        if (prnti < 0) return [str];
+        return [str.substring(0, prnti), str.substring(prnti)];
+    }
+
+    function getArgs(str) {
+        function isNumeric(n) {
+            return !isNaN(parseFloat(n));
+        }
+
+        var i = 1;
+
+        var mode = 0;
+        var argendc = '';
+        var argval = '';
+        var resargs = [];
+        var commas = 0;
+        while (i < str.length) {
+            var c = str[i];
+            i++;
+
+            if (c == ' ' && mode === 0) continue;
+
+            if ((c == ')' || c == ',') && mode === 0) {
+
+                if (c == ',') {
+                    commas++;
+                }
+
+                if (argval.length) {
+                    if (isNumeric(argval)) {
+                        resargs.push(parseFloat(argval));
+                    }
+                    else {
+                        resargs.push(getFunc(argval));
+                    }
+
+                    argval = '';
+                }
+
+                if (c == ')') break;
+
+                if (commas > resargs.length) {
+                    resargs.push(undefined);
+                }
+
+                continue;
+            }
+
+            if (mode == 'strArg') {
+
+                if (c == argendc) {
+                    resargs.push(argval);
+                    argval = '';
+                    mode = 0;
+                    continue;
+                }
+            }
+            else {
+                if (c == "'" || c == '"') {
+                    mode = 'strArg';
+                    argendc = c;
+                    continue;
+                }
+            }
+
+            argval += c;
+
+        }
+
+        return resargs;
+    }
+
+    return {
+        gfunc: getFunc, // (ex eval)
         setCookie: function (name, val) {
             document.cookie = name + '=' + val;
         },
@@ -172,7 +290,13 @@ var awef = function ($) {
 
             return res;
         },
-        logErr: console && console.error || function () { }
+        logErr: console && console.error || function () { },
+        tchange: function (elm) {
+            return elm.trigger('change');
+        },
+        tfocus: function (elm) {
+            return elm.trigger('focus');
+        }
     };
 }(jQuery);
 
@@ -188,16 +312,19 @@ var awe = function ($) {
     var $document = $(document);
     var $doc = $document;
     var $window = $(window);
-    var loop = awef.loop, isNull = awef.isNull, isNotNull = awef.isNotNull, encode = awef.encode, serialize = awef.serlArr;
+    var loop = awef.loop, qsel = awef.select, encode = awef.encode, isNull = awef.isNull, isNotNull = awef.isNotNull, isEmp = awef.isNullOrEmp, gfunc = awef.gfunc;
     var len = awef.len, outerh = awef.outerh, outerw = awef.outerw, logError = awef.logErr;
+    var tchange = awef.tchange, tfocus = awef.tfocus;
     var adata = awef.data;
 
     var minZindex = 1;
     var popupDraggable = 1;
-    var popSpace = 35;
+    var popSpace = 50;
+    var popHorizSpace = 10;
     var popTopSpace = 0;
-    var clickOutSpace = 101;
+    var clickOutSpace = 35;
     var hpSpace = popSpace / 2;
+    var hpHorizSpace = popHorizSpace / 2;    
     var maxDropdownHeight = 420;
     var menuMinh = 200;
 
@@ -274,6 +401,7 @@ var awe = function ($) {
     var isMobile = function () { return awe.isMobile(); };
 
     //#region core sync
+
     var popId = 1;
     function dapi(o, newapi) {
         if (newapi) return o.data('api', newapi);
@@ -310,6 +438,10 @@ var awe = function ($) {
         }
 
         return result === "rtl";
+    }
+
+    function tclick(elm) {
+        elm.trigger(sclick);
     }
 
     function removeClass(o, s) {
@@ -719,7 +851,7 @@ var awe = function ($) {
 
         if (o.v) {
             editor.on('input', function () {
-                enforceEditorNumber(editor);               
+                enforceEditorNumber(editor);
             });
         }
 
@@ -795,14 +927,14 @@ var awe = function ($) {
             }
         }
 
-        function incAndStartTime(etype) {
+        function incAndStartTime(etype, noFocusOnSpin) {
             // can be touchstart or mousedown
             if (lastclicktype === etype || !lastclicktype) {
                 lastclicktype = etype;
                 mouseup = 0;
 
                 setTimeout(function () {
-                    if (!editor.is(':focus')) editor.focus();
+                    if (!editor.is(':focus') && !noFocusOnSpin) { tfocus(editor); }
                     inc();
                 });
 
@@ -817,7 +949,7 @@ var awe = function ($) {
                             mdStartIncTimeout = 0;
                             mdIncInterval = 0;
 
-                            if (!editor.is(':focus')) editor.focus();
+                            if (!editor.is(':focus') && !noFocusOnSpin) { tfocus(editor); }
                         });
                 }
             } else {
@@ -830,13 +962,13 @@ var awe = function ($) {
             o.f.find('.awe-spinup')
                 .on(touchstartmousedownNpd, function (e) {
                     op = 1;
-                    incAndStartTime(e.type);
+                    incAndStartTime(e.type, o.noFocusOnSpin);
                 });
 
             o.f.find('.awe-spindown')
                 .on(touchstartmousedownNpd, function (e) {
                     op = -1;
-                    incAndStartTime(e.type);
+                    incAndStartTime(e.type, o.noFocusOnSpin);
                 });
         }
 
@@ -848,12 +980,12 @@ var awe = function ($) {
         api.foh = emptyFunc;
         api.render = function () {
             var sval = o.v.val() ? getNumericValStr(0, 0, o.v, 1) : estr;
-            
+
             editor.val(o.ff(sval));
         };
 
         // display change
-        api.dch = function () {               
+        api.dch = function () {
             var val = editor.val() ? getNumericValStr(0, o.dec, editor) : estr;
             val = trimFloatZeroesDot(val);
             o.v.val(val);
@@ -895,7 +1027,7 @@ var awe = function ($) {
             if (!istrg(e, o.f) && !$(':focus').is(editor)) {
                 $document.off(sfocusin + ws + sclick, focusoutHandler);
                 focusreg = 0;
-                editor.change();
+                tchange(editor);
                 var sval = o.v.val() ? getNumericValStr(0, 0, o.v, 1) : estr;
                 editor.val(o.ff(sval));
             }
@@ -910,7 +1042,7 @@ var awe = function ($) {
 
         // create open load popup
         loop(o.btns, function (btn) {
-            btn.action = eval(btn.action);
+            btn.action = gfunc(btn.action);
         });
 
         makePopup(o);
@@ -921,8 +1053,9 @@ var awe = function ($) {
             if (!donotset) scon.html(content);
             api.ld = 1;
             api.lay && api.lay();
+            
             focusfirst(o);
-            if (o.load) o.load.call(o);
+            if (o.load) gfunc(o.load).call(o);
         }
 
         dapi(popup).open(o);
@@ -1289,14 +1422,17 @@ var awe = function ($) {
                 rbi = rb.data('i');
             }
 
-            hrow.find('.awe-hc').sort(function (a, b) {
-                return $(a).data('i') - $(b).data('i');
-            }).each(function (_, val) {
+            let headerCols = hrow.find('.awe-hc')
+                .get()
+                .sort(function (a, b) {
+                    return $(a).data('i') - $(b).data('i');
+                });
+
+            loop(headerCols, function (val) {
                 var col = $(val);
                 colOffset = col.offset();
                 left = colOffset.left;
 
-                // stop reorder under frozen columns
                 if (rbleft) {
                     if (col.data('i') === rbi) {
                         rbleft = null;
@@ -1362,7 +1498,7 @@ var awe = function ($) {
             return dragCancelFunc(hcon);
         }
 
-        regDragDrop(hrow, '.' + sawegroupable + ', .awe-rer', [gbar, hrow], [onGroupDrop, onHeaderDrop], 'awe-dcol', nul,
+        return regDragDrop(hrow, '.' + sawegroupable + ', .awe-rer', [gbar, hrow], [onGroupDrop, onHeaderDrop], 'awe-dcol', nul,
             [onGroupHover, onHeaderHover], onEnd, onResetHover,
             [{ c: hcon, x: 1, p: opt.syncon ? opt.cont : hcon }, { c: $window, x: 1 }], wrap, nul, hconDragCancel());
     }
@@ -1407,8 +1543,8 @@ var awe = function ($) {
         var contentHeight = o.conth;
         var gheight = o.h;
 
-        var scrollable = gheight || contentHeight;        
-        
+        var scrollable = gheight || contentHeight || sbw;
+
         if (!scrollable) paddingValue = estr;
 
         gdiv.css(sheight, gheight || estr);
@@ -1421,9 +1557,9 @@ var awe = function ($) {
         if (len(gridColumnsHeader)) {
             gridColumnsHeader.css(padding, paddingValue)
                 .css(rempadding, estr);
-            
+
             if (!scrollable)
-            gridColumnsHeader.css('padding-inline', 0);
+                gridColumnsHeader.css('padding-inline', 0);
         }
 
         frozenRowsContent && frozenRowsContent.css(padding, paddingValue)
@@ -1557,8 +1693,7 @@ var awe = function ($) {
     }
 
     function open(name, openCfg, event) {
-        //{cfg}, event
-
+        //{cfg}, event        
         if (typeof name != 'string') {
             event = openCfg;
             openCfg = name;
@@ -1569,7 +1704,7 @@ var awe = function ($) {
             openCfg.id = name;
         }
 
-        if (openCfg.div) {
+        if (openCfg.div || !openCfg.id) {
             var aid = $(openCfg.div).data('aid');
             if (!aid) {
                 aid = openCfg.id || ('awep' + popId++);
@@ -1611,7 +1746,12 @@ var awe = function ($) {
         adata(popup, 'o', cfg);
         cfg.scon = popup.find('.awe-scon');
 
-        if (cfg.type === "pf") {
+        if (cfg.type === "pf" || cfg.type === 'popupForm') {
+
+            if (isNull(cfg.closeOnSuccess)) {
+                cfg.closeOnSuccess = 1;
+            }
+
             return awe.pf(event, cfg);
         } else {
             return awe.op(event, cfg);
@@ -1960,11 +2100,13 @@ var awe = function ($) {
                         var alink = focused.find('a');
                         if (len(alink)) {
                             prevDef(e);
-                            alink[0].click();
+                            tclick(alink[0]);
                         }
                         else {
-                            prevDef(e);
-                            focused.click();
+                            if (len(focused)) {
+                                prevDef(e);
+                                tclick(focused);
+                            }
                         }
                     }
                 }
@@ -2322,11 +2464,12 @@ var awe = function ($) {
         });
     }
 
-    function isChildPopup(it, mId) {
+    function isChildPopup(it, myId) {
         var pop1 = it.closest('.o-pu');
-        if (pop1.data('pid') === mId) {
+        if (pop1.data('pid') === myId) {
             return 1;
         }
+
         var pid, mclick = 0;
         if (it.is('.o-pmodal')) {
             mclick = 1;
@@ -2337,18 +2480,17 @@ var awe = function ($) {
         }
 
         if (pid) {
-            if (pid === mId && !mclick) return 1;
+            if (pid === myId && !mclick) return 1;
 
             var popener = kvIdOpener[pid];
             if (popener)
-                return isChildPopup(popener, mId);
+                return isChildPopup(popener, myId);
         }
     }
 
     function dropdownPopup(o) {
         var outsideClickClose = readTag(o, "Occ", o.outClickClose);
         var isDropDown = readTag(o, "Dd", o.dropdown);
-        
         var showHeader = readTag(o, "Sh", !isDropDown);
         var toggle = readTag(o, "Tg");
 
@@ -2368,7 +2510,7 @@ var awe = function ($) {
 
         var pmccls = ' o-pmc o-pu ' + (pp.popupClass || se);
         if (isDropDown) pmccls += ' o-ddp';
-        
+
         if (o.pwrp) {
             wrap = popup.closest('.o-pwrap');
             modal = wrap.find('.o-pmodal');
@@ -2381,7 +2523,7 @@ var awe = function ($) {
 
         wrap.find('.o-pu').first().attr('data-i', pp.id);
 
-        var $dropdownPopup = wrap.find('.o-pu');
+        var $dropdownPopup = wrap.find('.o-pmc');
 
         if (!o.pwrp) {
             header = $(rdiv('o-phdr', rdiv('o-ptitl', pp.title || snbsp) + sclosespan));
@@ -2392,8 +2534,6 @@ var awe = function ($) {
         }
 
         var btns = pp.btns;
-
-
 
         var sopener = o.opener;
 
@@ -2424,10 +2564,10 @@ var awe = function ($) {
                         last = tabbables.last();
                     var tg = trg(e);
                     if (tg.is(last) && !e.shiftKey) {
-                        first.focus();
+                        tfocus(first);
                         return false;
                     } else if (tg.is(first) && e.shiftKey) {
-                        last.focus();
+                        tfocus(last);
                         return false;
                     }
                 }
@@ -2450,7 +2590,7 @@ var awe = function ($) {
             if (!cx.isOpen) return;
 
             var winavh = $win.height() - popSpace;
-            var winavw = $win.width() - popSpace;
+            var winavw = $win.width() - popHorizSpace;
 
             if (top) {
                 winavh -= popTopSpace;
@@ -2476,7 +2616,7 @@ var awe = function ($) {
 
             fls = pp.fullscreen;
             top = pp.top;
-            
+
             if (openerId && !$opener.closest(document).length) {
                 $opener = $('#' + openerId);
             }
@@ -2523,7 +2663,7 @@ var awe = function ($) {
                 }
             }
             else {
-                // set minw based on opener                
+                // set minw based on opener
                 if (len($opener)) {
                     popup.css(sminw, outerw($opener));
                 }
@@ -2575,7 +2715,8 @@ var awe = function ($) {
                     popup.css(swidth, winavw - popoutw);
 
                     // set max-height for dropdown popups (menu)
-                    popup.css(o.menu ? smaxh : sheight, avh);
+                    //popup.css(o.menu ? smaxh : sheight, avh);                    
+                    popup.css(pp.fullscreen ? sheight : smaxh, avh);
                 }
 
                 if (fls || pp.modal) {
@@ -2649,7 +2790,7 @@ var awe = function ($) {
 
                 if (!isChildPopup(tg, pp.id)) {
                     if (!tg.closest($opener).length) {
-                        api.close({ nofocus: 1 });
+                        api.close({ nofocus: 1, initialEvent: e });
                     }
                 }
             } else {
@@ -2675,7 +2816,7 @@ var awe = function ($) {
 
         api.open = function (opt) {
             popt = opt || {};
-            var e = popt.e;            
+            var e = popt.e;
             if (toggle) {
                 if (cx.isOpen) {
                     return api.close();
@@ -2683,7 +2824,7 @@ var awe = function ($) {
             }
 
             sopener = popt.opener || sopener;
-            
+
             if (sopener) {
                 $opener = $(sopener);
             } else {
@@ -2706,7 +2847,7 @@ var awe = function ($) {
 
             if ($opener) {
                 openerId = $opener.attr('id');
-                var parPop = $opener.closest('.o-pu');
+                var parPop = $opener.closest('.o-pmc');
 
                 if (parPop.length) {
                     zIndex = parPop.css(szindex);
@@ -2749,37 +2890,28 @@ var awe = function ($) {
                 bind(o, $doc, sddpOutClEv, outClickClose);
             }, 100);
 
-            if (!isMobile() && !pp.nf) {
-                setTimeout(function () {
-                    var popTab = tabbable(popup).first();
-                    if (popTab.length) {
-                        popTab.focus();
-                    } else {
-                        tabbable(wrap).first().focus();
-                    }
-                },
-                    10);
-            }
+            focusFirstDesk(o);
 
             popup.trigger('aweopen');
-        };
+        };        
 
         api.close = function (opt) {
             opt = opt || {};
 
-            cx.isOpen = 0;
-
             var nofocus = opt.nofocus || o.noCloseFocus;
 
             popup.trigger('awebfclose', opt);
+            o.beforeClose && o.beforeClose(opt);
+
             if (opt.noclose && !opt.force) return; // noclose can be set by awebfclose handler
 
+            cx.isOpen = 0;
             itmoved = 0;
             wrap.hide();
             if (modal) modal.hide();
 
             if (pp.close) {
-                pp.close();
+                gfunc(pp.close)();
             }
 
             popup.trigger('aweclose', { out: nofocus });
@@ -2804,17 +2936,17 @@ var awe = function ($) {
 
             if (!nofocus) {
                 if (o.fcs) {
-                    o.fcs.focus();
+                    tfocus(o.fcs);
                 }
                 else if ($opener && len($opener)) {
 
-                    $opener.focus();
+                    tfocus($opener);
                     var tofoc = $opener.find('.o-tofoc');
                     if (len(tofoc)) {
-                        tofoc.focus();
+                        tfocus(tofoc);
                     }
                     else {
-                        awe.tabbable($opener).first().focus();
+                        tfocus(awe.tabbable($opener).first());
                     }
                 }
             }
@@ -2832,7 +2964,7 @@ var awe = function ($) {
         };
 
         popup.data('api', api);
-        header.find('.o-cls').click(api.close);
+        header.find('.o-cls').on(sclick, api.close);
 
         function getDragPopup() {
             itmoved = 1;
@@ -2844,7 +2976,9 @@ var awe = function ($) {
                 from: header,
                 ch: getDragPopup,
                 kdh: 1,
-                cancel: function () { return fls; }
+                cancel: function (cx) {
+                    return fls || len($(cx.e.target).closest('.o-cls'));
+                }
             });
         }
 
@@ -2868,7 +3002,11 @@ var awe = function ($) {
 
     function addFooter(btns, cont, popup, fclass) {
         // add btns if any
-        if (len(btns)) {
+        var btnsbar = cont.find('.o-pbtns');
+        if (len(btnsbar)) {
+            cont.append(btnsbar);
+        }
+        else if (len(btns)) {
             var footer = $('<div/>').addClass(fclass);
 
             loop(btns, function (el) {
@@ -2883,7 +3021,7 @@ var awe = function ($) {
                         });
                 }
 
-                btn.click(function () { el.action.call(popup); });
+                btn.on(sclick, function () { el.action.call(popup); });
                 footer.append(btn);
             });
 
@@ -2940,12 +3078,13 @@ var awe = function ($) {
         var winh = $win.height();
         var winw = $win.width();
 
-        var maxw = popt.maxw || winw - popSpace;
+        var maxw = popt.maxw || winw - popHorizSpace;
         var mnw = Math.min(outerw(pop), maxw);
 
         pop.css('min-height', se);
         pop.css(sheight, se);
         pop.css('max-width', maxw);
+
 
         pop.css(sminw, canShrink ? se : mnw);
 
@@ -3072,13 +3211,14 @@ var awe = function ($) {
                     left -= left + w - winw;
                 }
 
-                if (left < 10) {
-                    left = 10;
+                if (left < hpHorizSpace) {
+                    left = hpHorizSpace;
                 }
             }
 
             if (autofls) {
-                left = toppos = hpSpace;
+                toppos = hpSpace;
+                left = hpHorizSpace;
             } else if (bot < h + hpSpace && (top > h + hpSpace || top > bot)) {
                 // top
                 toppos = topd - h - marg;
@@ -3101,7 +3241,10 @@ var awe = function ($) {
             }
         } else {
             // no opener, center popup
-            if (postop) {
+            if (autofls) {
+                toppos = hpSpace / 2;
+            }
+            else if (postop) {
                 toppos = hpSpace + popTopSpace;
             } else {
                 var diff = winh - h;
@@ -3116,7 +3259,23 @@ var awe = function ($) {
             pop.css('left', left);
             pop.css('top', Math.floor(toppos));
         }
+
+        addRemClass(pop, function () { return pop.width() < 90; }, 'o-small');
     }
+
+    function addRemClass(pop, cond, cssClass) {
+        if (cond()) {
+            addClass(pop, cssClass);
+        } else {
+            removeClass(pop, cssClass);
+        }
+    }
+
+    function focusFirstDesk(o) {
+        if (isMobile() || o.noFocusFirst) return;
+        tfocus(awe.tabbable(o.d).first());
+    }
+
     //#endregion awem sync
 
     //#region blazor
@@ -3128,6 +3287,7 @@ var awe = function ($) {
                 opt.objRef.invokeMethodAsync("SetClosed");
             }
         }
+
         return open(opt);
     }
 
@@ -3206,20 +3366,12 @@ var awe = function ($) {
 
             if (isOpen()) {
                 if (k === keyEnter) {
-                    //if (!wasOpen) 
-                    {
-                        getHov().click();
-                    }
+                    tclick(getHov());
                 } else if (k === keyEsc) {//!inline && 
-                    opt.close(); //dapi(popup).close();
+                    opt.close(); 
                     e.stopPropagation();
-                }
-                //else if (input.val() !== kval) {
-                //    parseInput();
-                //}
+                }                
             }
-
-            //wasOpen = 0;
         }
 
         function keynav(key) {
@@ -3275,7 +3427,7 @@ var awe = function ($) {
 
                 if (nbtn.is(':enabled')) {
                     var m = getTbMonth();
-                    cont.find(cls).click();
+                    tclick(cont.find(cls));
 
                     var intc = 0;
                     waitRender = 1;
@@ -3510,7 +3662,7 @@ var awe = function ($) {
         }
 
         function openDtp() {
-            input.click();
+            tclick(input);
         }
 
         function getPopup() {
@@ -3592,7 +3744,7 @@ var awe = function ($) {
         var gdiv = $(opt.gdiv);
         var key = opt.key;
         var row = gdiv.find('.awe-row[data-k=' + key + ']');
-        tabbable(row).first().focus();
+        tfocus(tabbable(row).first());        
     }
 
     function flashRow(opt) {
@@ -3714,7 +3866,7 @@ var awe = function ($) {
             range.move('character', caretPos);
             range.select();
         } else if (elem.selectionStart) {
-            elem.focus();
+            tfocus(elem);
             elem.setSelectionRange(caretPos, caretPos);
         }
     }
@@ -3794,8 +3946,8 @@ var awe = function ($) {
                 handle: opt.handle,
                 splh: opt.splh,
                 plh: opt.plhCls,
-                swrap: opt.swrap ? eval(opt.swrap) : nul
-            };
+                swrap: opt.swrap ? gfunc(opt.swrap) : nul
+            };            
 
             var dropConts = opt.dropConts;
 
