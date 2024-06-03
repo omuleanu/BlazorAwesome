@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UiWasm", "UiWasm\UiWasm.csproj", "{F8CEE2AA-4993-4715-A14C-30C884B3FCA7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestUi", "TestUi\TestUi.csproj", "{617CA951-0D85-4513-9557-FD7E9C4A3808}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{F8CEE2AA-4993-4715-A14C-30C884B3FCA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F8CEE2AA-4993-4715-A14C-30C884B3FCA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F8CEE2AA-4993-4715-A14C-30C884B3FCA7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{617CA951-0D85-4513-9557-FD7E9C4A3808}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{617CA951-0D85-4513-9557-FD7E9C4A3808}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{617CA951-0D85-4513-9557-FD7E9C4A3808}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{617CA951-0D85-4513-9557-FD7E9C4A3808}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
