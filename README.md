@@ -39,4 +39,22 @@ Demos downloads: [Blazor Server](https://www.aspnetawesome.com/Download/BlazorAw
     }
 }
 ```
-3) Hit `Ctrl+F5` in Visual Studio and try the button and the 2 DropdownLists.
+3) Hit `Ctrl+F5` in Visual Studio and try the **Button** and the 2 **DropdownLists**.
+
+### Open a popup
+1) In your `@code` section add this:
+```
+private OPopup popup1;
+```
+2) In the markup add this:
+```
+<br />
+<OPopup @ref="popup1" Opt="@(new(){ Modal = true, Title = "My Modal Popup", OutClickClose = true })">
+    <div style="min-width: 30vw; padding: 1em;">
+        Modal popup content
+    </div>
+</OPopup>
+<OButton OnClick="() => popup1.Open()">Open popup</OButton>
+```
+3) Hit `Ctrl+F5` and try clicking the `Open popup` button.
+
