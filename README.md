@@ -10,7 +10,7 @@ Demos downloads: [Blazor Server](https://www.aspnetawesome.com/Download/BlazorAw
 
 
 ### Getting started
-
+_(Installation and DropdownList tutorial)_
 1) Install the library into your blazor project as shown [here](https://www.aspnetawesome.com/learn/blazor/Installation)
 2) In your blazor page (Home.razor for example) add this code:
 ``` html
@@ -110,3 +110,15 @@ class Lunch
 }
 ```
 3) Hit `Ctrl + F5`, and try the grid, you can sort, group, filter by the Name Column, and pick your columns from the bottom corner menu.
+
+### Multiselect, Multicheck and Combobox
+We can reuse the `opt` options object from the 1st tutorial "Getting started", to demonstrate other editors.
+After the DropdownList paste this code:
+``` html
+<br />
+<br />
+<OMultiselect TKey="int" Opt="opt" />
+<OMulticheck TKey="int" Opt="opt" />
+<OCombobox Opt="opt" />
+```
+You can use `@bind-Value="Prop1"` instead of specifying the `TKey`, as shown for the DropdownList, in that case `Prop1` could be of type `IEnumerable<int>`. The combobox `bind-Value` property type should be `object` because its value can be either string or the key type.
