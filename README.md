@@ -122,3 +122,7 @@ After the DropdownList paste this code:
 <OCombobox Opt="opt" />
 ```
 You can use `@bind-Value="Prop1"` instead of specifying the `TKey`, as shown for the DropdownList, in that case `Prop1` could be of type `IEnumerable<int>`. The combobox `bind-Value` property type should be `object` because its value can be either string or the key type.
+
+---
+### Video Tutorial
+https://youtu.be/GoFudnfTUys
