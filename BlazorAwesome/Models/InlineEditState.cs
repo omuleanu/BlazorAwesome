@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -21,7 +22,7 @@ namespace Omu.BlazorAwesome.Models
         public GridOpt<T> GetOpt { private get; set; }
 
         private int createId = 0;
-                
+
         /// <summary>
         /// ServiceProvider needed as parameter for EnableDataAnnotationsValidation
         /// </summary>
@@ -43,7 +44,7 @@ namespace Omu.BlazorAwesome.Models
             };
 
             initItem(itemState);
-            
+
             editStates.Add(itemState.Key, itemState);
         }
 
@@ -129,7 +130,12 @@ namespace Omu.BlazorAwesome.Models
                 };
             }
 
-            if (await saveFunc(cx))
+            // don't call save when there's no changes
+            if (theresNoChanges(cx))
+            {                
+                editStates.Remove(cx.Key);
+            }
+            else if (await saveFunc(cx))
             {
                 editStates.Remove(cx.Key);
             }
@@ -142,16 +148,24 @@ namespace Omu.BlazorAwesome.Models
         /// </summary>
         public async Task SaveAllAsync()
         {
-            var res = await GetOpt.InlineEdit.SaveAll(editStates.Values);
-            if (editStates.Count > res.Count())
+            foreach (var kv in editStates)
             {
-                string key = editStates.First(st => !res.Contains(st.Key)).Key;
+                if (theresNoChanges(kv.Value))
+                {
+                    editStates.Remove(kv.Key);
+                }
+            }
+
+            var savedKeys = await GetOpt.InlineEdit.SaveAll(editStates.Values);
+            if (editStates.Count > savedKeys.Count())
+            {
+                string key = editStates.First(st => !savedKeys.Contains(st.Key)).Key;
                 SetFocusFirst(key);
             }
 
-            foreach (var item in res)
+            foreach (var savedKey in savedKeys)
             {
-                editStates.Remove(item);
+                editStates.Remove(savedKey);
             }
 
             await GetOpt.State.LoadAsync(new() { Partial = true });
@@ -173,6 +187,12 @@ namespace Omu.BlazorAwesome.Models
         public EditItemState<T>[] GetCreateStates()
         {
             return editStates.Values.Where(editState => editState.IsCreate).ToArray();
+        }
+
+        private bool theresNoChanges(EditItemState<T> cx)
+        {
+            var input = GetOpt.InlineEdit.GetModel(cx.Item);
+            return JsonSerializer.Serialize(cx.Input) == JsonSerializer.Serialize(input);
         }
     }
 }

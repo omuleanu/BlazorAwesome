@@ -131,16 +131,16 @@
 
         gopt.InlineEdit.SaveAll = async items =>
             {
-                var saved = new List<string>();
+                var savedKeys = new List<string>();
                 foreach (var state in items)
                 {
                     if (await saveItemAsync(state))
                     {
-                        saved.Add(state.Key);
+                        savedKeys.Add(state.Key);
                     }
                 }
 
-                return saved;
+                return savedKeys;
             };
 
         // we can specify Save or SaveAll or both
