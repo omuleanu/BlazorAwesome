@@ -8,9 +8,11 @@ namespace UiServer.Data
         {
         }
 
-        public DbSet<Dinner> Dinners { get; set; }
+        public DbSet<Dinner> Dinners { get; set; }        
+
         public DbSet<Food> Foods { get; set; }
         public DbSet<Meal> Meals { get; set; }
+        public DbSet<Restaurant> Restaurants { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Chef> Chefs { get; set; }
         public DbSet<Country> Countries { get; set; }
@@ -26,6 +28,10 @@ namespace UiServer.Data
 
             modelBuilder.Entity<Dinner>()
                 .HasOne(o => o.BonusMeal)
+                .WithMany();
+
+            modelBuilder.Entity<Dinner>()
+                .HasOne(o => o.Restaurant)
                 .WithMany();
 
             modelBuilder.Entity<Lunch>()

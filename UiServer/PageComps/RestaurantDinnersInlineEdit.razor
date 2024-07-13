@@ -1,0 +1,216 @@
+﻿@inject IDbContextFactory<MyContext> cxf
+@inject CachedItems cache
+<div style="padding: .5em;">
+    <div class="bar">
+        <OButton OnClick="() => gopt.State.InlineEdit.Create(new DinnerInput())">Create</OButton>
+        <OButton OnClick="() => gopt.State.InlineEdit.CancelAll()">Cancel all</OButton>
+        <OButton OnClick="async () => await gopt.State.InlineEdit.SaveAllAsync()">Save all</OButton>
+    </div>
+
+    <OGrid Opt="gopt" />
+    <OConfirm @ref="delPopup" ModOpt="setConfirmOpt">
+        Are you sure you want to delete dinner: <b>@delName</b> ?
+    </OConfirm>
+</div>
+
+@code
+{
+    [Parameter]
+    public Restaurant Restaurant { get; set; }
+
+    private OConfirm delPopup;
+    private string delName;
+    private GridOpt<Dinner> gopt = new() { ContentHeight = 150 };
+
+    // used to higlight row when confirming delete
+    private int? delKey;
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private void confirmDelete(Dinner item)
+    {
+        delName = item.Name;
+        delKey = item.Id;
+        delPopup.Open(async () =>
+        {
+            using var mcx = cxf.CreateDbContext();
+            mcx.Remove<Dinner>(item);
+
+            await mcx.SaveChangesAsync();
+
+            await gopt.State.LoadAsync();
+        });
+    }
+
+    private void setConfirmOpt(PopupOpt opt)
+    {
+        opt.OnClose = async () =>
+        {
+            delKey = null;
+            gopt.State.Render();
+        };
+    }
+
+    private async Task<bool> saveItemAsync(EditItemState<Dinner> edstate)
+    {
+        var input = (DinnerInput)edstate.Input;
+
+        using var mcx = cxf.CreateDbContext();
+
+        if (!edstate.EditContext.Validate()) return false;
+
+        var model = edstate.IsCreate ? new() :
+            await mcx.Dinners
+            .Include(o => o.Meals)
+            .FirstAsync(o => o.Id == input.Id);
+
+        model.Name = input.Name;
+        model.Date = input.Date.Value;
+        model.Chef = await mcx.FindAsync<Chef>(input.ChefId);
+
+        // ToList req for EF
+        model.Meals = await mcx.Meals
+            .Where(o => input.MealsIds.Contains(o.Id)).ToListAsync();
+
+        model.BonusMeal = await mcx.FindAsync<Meal>(input.BonusMealId);
+        model.Organic = input.Organic;
+
+        // add Restaurant parameter
+        model.Restaurant = Restaurant;
+
+        if (edstate.IsCreate)
+        {
+            mcx.Add<Dinner>(model);
+        }
+        else
+        {
+            mcx.Update(model);
+        }
+
+        mcx.SaveChanges();
+
+        AweUtil.FlashRow(gopt, model.Id);
+        return true;
+    }
+
+    private void initGrid()
+    {
+        gopt.ColumnWidth = 180;
+        gopt.KeyProp = m => m.Id;
+
+        gopt.EFData(cxf, mcx => mcx.Dinners.Where(o => o.Restaurant == Restaurant)
+            .Include(p => p.Meals)
+            .Include(p => p.Chef)
+            .Include(p => p.BonusMeal));
+
+        gopt.RowClassFunc = itm =>
+        {
+            if (itm is not null && delKey == itm.Id)
+            {
+                return "awe-hl";
+            }
+
+            return null;
+        };
+
+        gopt.InlineEdit = new();
+
+        gopt.InlineEdit.GetModel = entity => new DinnerInput
+            {
+                Id = entity.Id,
+                Name = entity.Name,
+                Date = entity.Date,
+                ChefId = entity.Chef?.Id,
+                MealsIds = entity.Meals?.Select(o => o.Id).ToArray(),
+                BonusMealId = entity.BonusMeal?.Id,
+                Organic = entity.Organic
+            };
+
+        gopt.InlineEdit.SaveAll = async items =>
+            {
+                var saved = new List<string>();
+                foreach (var state in items)
+                {
+                    if (await saveItemAsync(state))
+                    {
+                        saved.Add(state.Key);
+                    }
+                }
+
+                return saved;
+            };
+
+        // we can specify Save or SaveAll or both
+        // gopt.InlineEdit.Save = async editState => await saveItemAsync(editState);
+
+        gopt.Columns = new[] {
+        new Column<Dinner>()
+        {
+            For = o => o.Id,
+            Width = 100,
+            GetStr = o => o?.Id.ToString()
+        },
+        new Column<Dinner>()
+        {
+            For = m => m.Name,
+            Grow = 1.2
+        }
+        .Editor(ORender.TextBox(gopt)),
+
+        new Column<Dinner>()
+        {
+            For = m => m.Date,
+        }
+        .Editor(ORender.DatePicker(gopt)),
+
+        new Column<Dinner>
+        {
+            Header = "Chef",
+        }
+        .For(m => m.Chef.FirstName, m => m.Chef.LastName)
+        .Editor(
+            ORender.DropdownList(gopt, new()
+            {
+               Name = nameof(DinnerInput.ChefId),
+               Opt = new(){
+                   DataFunc = cache.Chefs
+               }
+            })),
+        new Column<Dinner>
+        {
+            Header = "Meals",
+            GetStr = o => string.Join(", ", o.Meals.Select(o => o.Name)),
+            Grow = 1.4,
+            MinWidth = 200
+        }
+        .Editor(
+            ORender.Multiselect(gopt, new(){
+                Name = nameof(DinnerInput.MealsIds),
+                Opt = new () { DataFunc = cache.Meals }
+            })),
+        new Column<Dinner>
+        {
+            For = m => m.BonusMeal.Name,
+            Header = "Bonus Meal",
+        }
+        .Editor(
+            ORender.DropdownList(gopt, new (){
+                Name = nameof(DinnerInput.BonusMealId),
+                Opt = new(){ DataFunc = cache.Meals }
+            })),
+        new Column<Dinner>
+        {
+            For = m => m.Organic,
+            GetStr = itm => OLangDict.Get(itm.Organic ? ODictKey.Yes : ODictKey.No),
+            Width = 150
+        }
+        .Editor(ORender.Toggle(gopt))};
+
+        gopt.Column(ORender.InlEditColumn(this, gopt));
+        gopt.Column(ORender.InlDeleteColumn(this, gopt, confirmDelete));
+
+    } // end initGrid
+}

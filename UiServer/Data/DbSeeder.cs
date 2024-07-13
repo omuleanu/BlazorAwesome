@@ -89,22 +89,40 @@ namespace UiServer.Data
             var foodNames = new[] {"Banana", "Cheesecake", "Hot Beverage", "Apple", "Oat meal", "French toast", "Pizza", "Apple Pie", "Shepherd's pie",
             "Big Salad", "Soup"};
 
+            var restaurantNames = new[] { "McDowell's", "Chotchkie's", "Chili's", "Flingers", "The Cheesecake Factory", "The Rolling Donut", "Big Kahuna Burger", "City Wok", "Cluckin' Bell",
+                "Central Perk", "Island Diner", "Dream Cafe", "Cleveland's Deli", "Don't Drop Inn", "The Happy Sumo", "The Hungry Hun", "Krusty Burger", "Luigi's",
+                "Big T Burgers and Fries", "Pizza on a stick" };
 
+            #region Restaurants
+            foreach (var restaurantName in restaurantNames.Reverse())
+            {
+                var restaurant = new Restaurant { Name = restaurantName };
+
+                add(restaurant);
+            }
+
+            mcx.SaveChanges();
+            #endregion
+
+            #region Categories
             foreach (var category in categories)
             {
                 add(new Category { Name = category });
             }
 
             mcx.SaveChanges();
+            #endregion
 
+            #region Foods
             foreach (var fname in foodNames)
             {
                 add(new Food { Name = fname });
             }
 
             mcx.SaveChanges();
+            #endregion
 
-
+            #region Meals
             var Categories = mcx.Set<Category>().ToArray();
 
             add(new Meal { Name = "Mango", Category = Categories[0], Description = "The mango is a fleshy stone fruit belonging to the genus Mangifera" });
@@ -137,22 +155,29 @@ namespace UiServer.Data
             add(new Meal { Name = "Oats", Category = Categories[4], Description = "They have been in cultivation for over 4,000 years" });
             add(new Meal { Name = "Barley", Category = Categories[4], Description = " a source of fermentable material for beer and certain distilled beverages, and as a component of various health foods" });
 
+            #endregion
+
+            #region Countries
             foreach (var country in countryNames)
             {
                 add(new Country { Name = country });
             }
 
-            mcx.SaveChanges();
+            mcx.SaveChanges(); 
+            #endregion
 
             var Meals = mcx.Meals.ToArray();
+            var Restaurants = mcx.Restaurants.ToArray();
             var Countries = mcx.Countries.ToArray();
 
+            #region Countries
             foreach (var nms in chefNames)
             {
                 add(new Chef { FirstName = nms[0], LastName = nms[1], Country = Rnd(Countries) });
             }
 
-            mcx.SaveChanges();
+            mcx.SaveChanges(); 
+            #endregion
 
             var Chefs = mcx.Chefs.ToArray();
             var Foods = mcx.Foods.ToArray();
@@ -168,7 +193,6 @@ namespace UiServer.Data
             }
 
             mcx.SaveChanges();
-
 
 
             IDictionary<string, List<Food>> personFood = ppl.ToDictionary(o => o, o => new List<Food>());
@@ -232,6 +256,7 @@ namespace UiServer.Data
 
             mcx.SaveChanges();
 
+
             void FillNode(TreeNode parent, int depth, int maxDepth)
             {
                 var maxNodes = (int)Math.Max(5 - depth * 0.7, 1);
@@ -271,7 +296,8 @@ namespace UiServer.Data
                     Chef = Rnd(Chefs),
                     Meals = RndMeals().ToList(),
                     BonusMeal = Rnd(Meals),
-                    Organic = R.Next(10) > 3
+                    Organic = R.Next(10) > 3,
+                    Restaurant = R.Next(10) > 1 ? Rnd(Restaurants) : null
                 });
             }
 
