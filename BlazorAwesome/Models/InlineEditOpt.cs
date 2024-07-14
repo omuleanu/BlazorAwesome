@@ -31,6 +31,11 @@ namespace Omu.BlazorAwesome.Models
         /// Set a function that will execute after an EditItemState object is initialized, 
         /// (used to call EnableDataAnnotationsValidation on the .EditContext)
         /// </summary>
-        public Action<EditItemState<T>> InitItem { get; set; }        
+        public Action<EditItemState<T>> InitItem { get; set; }
+
+        /// <summary>
+        /// Edit row on click 
+        /// </summary>
+        public bool RowClickEdit { get; set; }
     }
 }

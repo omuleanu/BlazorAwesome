@@ -3561,6 +3561,22 @@ var awe = function ($) {
             });
         }
 
+        if (opt.rowClickEdit) {
+            bind(opt, gdiv, 'click', '.awe-row[data-k] .o-hasEditor', function (e) {                
+                var trg = $(e.target);
+                if (!trg.closest('.awe-grid').is(gdiv)) return;
+                if (trg.closest('button, .awe-field').length) return;
+                var k = trg.closest('.awe-row').data('k');
+
+                var i = trg.data('i');
+
+                console.log('k', k, i);
+                if (k) {
+                    opt.objRef.invokeMethodAsync("InlineEditRow", k.toString(), i);
+                }
+            });
+        }
+
         // drag columns grouping and reordering
         regColumnsGroupReorder({
             v: gdiv,
@@ -3743,8 +3759,14 @@ var awe = function ($) {
     function inlfcs(opt) {
         var gdiv = $(opt.gdiv);
         var key = opt.key;
-        var row = gdiv.find('.awe-row[data-k=' + key + ']');
-        tfocus(tabbable(row).first());        
+        var cont = gdiv.find('.awe-row[data-k=' + key + ']');
+        var cellIndexToFocus = opt.cellIndexToFocus;
+        console.log('focus', cellIndexToFocus);
+        if (isNotNull(cellIndexToFocus)) {
+            cont = cont.find('[data-i=' + cellIndexToFocus + ']');
+        }
+
+        tfocus(tabbable(cont).first());        
     }
 
     function flashRow(opt) {

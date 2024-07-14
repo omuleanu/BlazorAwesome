@@ -60,7 +60,7 @@
         });
     }
 
-    private RenderFragment getRestaurantDetailsNest(Restaurant entity, object key = null)
+    private RenderFragment getRestaurantDetailsNest(Restaurant entity)
     {
         return @<RestaurantDinnersInlineEdit Restaurant="entity"></RestaurantDinnersInlineEdit>;
     }
@@ -74,12 +74,9 @@
             {
                 Width = 150,
                 Label = "edit",
-                Render = restaurant =>
-
-    @<OButton CssClass="@restaurantGridOpt.State.Nesting.NestClass(restaurant.Id)"
-                  OnClick="() => restaurantGridOpt.State.Nesting.ToggleOpen(new(){ Key = restaurant.Id, Render = getRestaurantDetailsNest(restaurant)})">
-        <i class="o-caretc"><i class="o-caret"></i></i> details
-    </OButton>
+                Render = restaurant => @<DinnersDetailsGridButton Entity="restaurant"
+                RestaurantGridOpt="restaurantGridOpt"
+                          OnClick="() => restaurantGridOpt.State.Nesting.ToggleOpen(new(){ Key = restaurant.Id, Render = getRestaurantDetailsNest(restaurant)})" />
         });
 
         restaurantGridOpt.Column(new()
@@ -108,6 +105,8 @@
         };
 
         restaurantGridOpt.InlineEdit = new();
+
+        restaurantGridOpt.InlineEdit.RowClickEdit = true;
 
         restaurantGridOpt.InlineEdit.GetModel = entity => new RestaurantInput
             {

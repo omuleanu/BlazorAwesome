@@ -71,12 +71,19 @@ namespace Omu.BlazorAwesome.Models
         /// <summary>
         /// Edit item
         /// </summary>
-        /// <param name="itm"></param>
-        public void Edit(T itm)
+        /// <param name="itemEditOpt"></param>
+        public async Task EditPrm(ItemEditOpt<T> itemEditOpt)
         {
+            var itm = itemEditOpt.Item;
+
             var key = GetOpt.State.GetKey(itm);
 
             if (editStates.ContainsKey(key)) return;
+
+            if (GetOpt.InlineEdit.RowClickEdit)
+            {
+                await SaveAllAsync();
+            }
 
             var model = GetOpt.InlineEdit.GetModel(itm);
             var itemState = new EditItemState<T>()
@@ -91,14 +98,23 @@ namespace Omu.BlazorAwesome.Models
 
             editStates.Add(key, itemState);
 
-            SetFocusFirst(key);
+            SetFocusFirst(key, itemEditOpt.CellIndexToFocus);
         }
 
-        private void SetFocusFirst(string key)
+        /// <summary>
+        /// Edit item
+        /// </summary>
+        /// <param name="item"></param>
+        public void Edit(T item)
+        {
+            EditPrm(new ItemEditOpt<T> { Item = item }).Wait();
+        }
+
+        private void SetFocusFirst(string key, int? cellIndexToFocus = null)
         {
             GetOpt.State.Component.AddPostRenderAction(async () =>
             {
-                await GetOpt.State.Component.JS.InvokeVoidAsync(CompUtil.AweJs("inlfcs"), new { gdiv = GetOpt.State.Component.Div, key });
+                await GetOpt.State.Component.JS.InvokeVoidAsync(CompUtil.AweJs("inlfcs"), new { gdiv = GetOpt.State.Component.Div, key, cellIndexToFocus });
             });
         }
 
@@ -132,7 +148,7 @@ namespace Omu.BlazorAwesome.Models
 
             // don't call save when there's no changes
             if (theresNoChanges(cx))
-            {                
+            {
                 editStates.Remove(cx.Key);
             }
             else if (await saveFunc(cx))
@@ -191,8 +207,29 @@ namespace Omu.BlazorAwesome.Models
 
         private bool theresNoChanges(EditItemState<T> cx)
         {
+            if (cx.Item is null)
+            {
+                return cx.Input is null;
+            }
+
             var input = GetOpt.InlineEdit.GetModel(cx.Item);
             return JsonSerializer.Serialize(cx.Input) == JsonSerializer.Serialize(input);
         }
+    }
+
+    /// <summary>
+    /// Item edit options
+    /// </summary>
+    public class ItemEditOpt<T>
+    {
+        /// <summary>
+        /// Item to edit
+        /// </summary>
+        public T Item { get; set; }
+
+        /// <summary>
+        /// Index of cell to focus after going to edit state
+        /// </summary>
+        public int? CellIndexToFocus { get; set; }
     }
 }

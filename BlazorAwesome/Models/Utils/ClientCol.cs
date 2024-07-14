@@ -21,6 +21,6 @@ namespace Omu.BlazorAwesome.Models.Utils
         public int Mw { get; set; }
 
         [JsonPropertyName("R")]
-        public bool? R { get; set; }
+        public bool? R { get; set; }        
     }
 }

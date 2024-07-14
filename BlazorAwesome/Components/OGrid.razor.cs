@@ -218,6 +218,22 @@ namespace Omu.BlazorAwesome.Components
         }
 
         /// <summary>
+        /// Row inline edit
+        /// </summary>
+        [JSInvokable]
+        public async Task InlineEditRow(string k, int? cellIndex)
+        {
+            var rowModel = Opt.State.Items.Where(o => Opt.State.GetKey(o) == k).FirstOrDefault();
+            
+            if (rowModel is not null)
+            {
+                await Opt.State.InlineEdit.EditPrm(new () { Item = rowModel, CellIndexToFocus = cellIndex });
+                gridStateChanged();
+                StateHasChanged();
+            }
+        }
+
+        /// <summary>
         /// Persist columns
         /// </summary>
         /// <param name="columns"></param>
@@ -248,6 +264,9 @@ namespace Omu.BlazorAwesome.Components
                 objRef = DotNetObjectReference.Create(this);
                 var columns = getClientColumns();
 
+
+
+
                 aweid = await js.InvokeAsync<string>(CompUtil.AweJs("regGGO"),
                 new
                 {
@@ -263,7 +282,10 @@ namespace Omu.BlazorAwesome.Components
                     gl = State.Groups?.Length,
                     onRowClick = Opt.RowClickFunc is not null,
                     fzl = Opt.FrozenColumnsLeft,
-                    fzr = Opt.FrozenColumnsRight
+                    fzr = Opt.FrozenColumnsRight,
+
+                    // inline editing
+                    rowClickEdit = Opt.InlineEdit?.RowClickEdit
                 });
 
                 return;
@@ -286,7 +308,7 @@ namespace Omu.BlazorAwesome.Components
                 foreach (var act in acts)
                 {
                     await act();
-                }                
+                }
             }
         }
 
@@ -383,7 +405,7 @@ namespace Omu.BlazorAwesome.Components
             if (objRef is not null)
             {
                 objRef.Dispose();
-                await CompUtil.TryDestroy(JS, gdiv);                
+                await CompUtil.TryDestroy(JS, gdiv);
             }
         }
 

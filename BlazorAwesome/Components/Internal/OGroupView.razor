@@ -239,7 +239,7 @@ else if (Model.Groups != null && !collapsed)
         @foreach (var cs in State.VisibleColumns)
         {
             var cspan = colix == 0 ? colspan : null;
-            <td colspan="@cspan">
+            <td colspan="@cspan" data-i="@(colix)">
                 @if (node && colix == 0)
                 {
                     @renderCollapseButton()
@@ -264,16 +264,18 @@ else if (Model.Groups != null && !collapsed)
         var colix = 0;
         return
     @<text>
-        @foreach (var cs in State.VisibleColumns)
+        @foreach (var columnState in State.VisibleColumns)
         {
             var cspan = colix == 0 ? colspan : null;
+            
+            var editorClass = columnState.Column.GetEditor() != null ? "o-hasEditor" : null;
 
-            <td colspan="@cspan" class="@(cs.Column.CssClass)">
+            <td colspan="@cspan" class="@(columnState.Column.CssClass) @editorClass" data-i="@(colix)">
                 @if (node && colix == 0)
                 {
                     @renderCollapseButton()
                 }
-                @renderCellContent(cs.Column, itm)
+                @renderCellContent(columnState.Column, itm)
             </td>
             colix++;
         }
