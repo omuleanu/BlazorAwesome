@@ -3566,15 +3566,35 @@ var awe = function ($) {
                 var trg = $(e.target);
                 if (!trg.closest('.awe-grid').is(gdiv)) return;
                 if (trg.closest('button, .awe-field').length) return;
-                var k = trg.closest('.awe-row').data('k');
+                var row = trg.closest('.awe-row');
+                var k = row.data('k');
 
                 var i = trg.data('i');
 
                 console.log('k', k, i);
                 if (k) {
-                    opt.objRef.invokeMethodAsync("InlineEditRow", k.toString(), i);
+                    $.when(opt.objRef.invokeMethodAsync("InlineEditRow", k.toString(), i)).done(function () {
+                        bind(opt, $document, 'click focus', onLeaveRow)
+                    });
                 }
-            });
+
+                function onLeaveRow(e) {
+                    if ($(e.target).closest(row).length) {
+                        console.log('cancel leave');
+                        return;
+                    }
+
+                    console.log('leave');
+
+                    // call save on current row
+                    $.when(opt.objRef.invokeMethodAsync("Save", k.toString())).done(function (res) {
+                        console.log('res =', res);
+                        if (res) {                            
+                            unbind(opt, onLeaveRow);
+                        }                        
+                    });                    
+                }                
+            });            
         }
 
         // drag columns grouping and reordering

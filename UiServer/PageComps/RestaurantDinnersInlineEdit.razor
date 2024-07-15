@@ -118,6 +118,8 @@
 
         gopt.InlineEdit = new();
 
+        gopt.InlineEdit.RowClickEdit = true;
+
         gopt.InlineEdit.GetModel = entity => new DinnerInput
             {
                 Id = entity.Id,

@@ -128,8 +128,20 @@ namespace Omu.BlazorAwesome.Models
 
         /// <summary>
         /// Save inline edit item
+        /// </summary>        
+        /// <returns>true for success</returns>
+        public async Task<bool> SaveAsync(string key)
+        {
+            var editItemState = editStates[key];
+            
+            return await SaveAsync(editItemState);
+        }
+
+        /// <summary>
+        /// Save inline edit item
         /// </summary>
-        public async Task SaveAsync(EditItemState<T> cx)
+        /// <returns>true for success</returns>
+        public async Task<bool> SaveAsync(EditItemState<T> cx)
         {
             var saveFunc = GetOpt.InlineEdit.Save;
             if (saveFunc is null)
@@ -146,17 +158,22 @@ namespace Omu.BlazorAwesome.Models
                 };
             }
 
+            var res = false;
+
             // don't call save when there's no changes
             if (theresNoChanges(cx))
             {
                 editStates.Remove(cx.Key);
+                res = true;
             }
             else if (await saveFunc(cx))
             {
                 editStates.Remove(cx.Key);
+                res = true;
             }
 
             await GetOpt.State.LoadAsync(new() { Partial = true });
+            return res;
         }
 
         /// <summary>

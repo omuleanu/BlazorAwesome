@@ -195,6 +195,17 @@ namespace Omu.BlazorAwesome.Components
         }
 
         /// <summary>
+        /// Save item by key
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns>returns true on success</returns>
+        [JSInvokable]
+        public async Task<bool> Save(string key)
+        {
+            return await State.InlineEdit.SaveAsync(key);
+        }
+
+        /// <summary>
         /// reorder columns
         /// </summary>
         /// <param name="currenti">current index</param>
