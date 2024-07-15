@@ -324,7 +324,7 @@ var awe = function ($) {
     var popTopSpace = 0;
     var clickOutSpace = 35;
     var hpSpace = popSpace / 2;
-    var hpHorizSpace = popHorizSpace / 2;    
+    var hpHorizSpace = popHorizSpace / 2;
     var maxDropdownHeight = 420;
     var menuMinh = 200;
 
@@ -396,7 +396,7 @@ var awe = function ($) {
     var max = Math.max, min = Math.min, round = Math.round;
 
     var kvIdOpener = {};
-    var storage = {};    
+    var storage = {};
 
     var isMobile = function () { return awe.isMobile(); };
 
@@ -1053,7 +1053,7 @@ var awe = function ($) {
             if (!donotset) scon.html(content);
             api.ld = 1;
             api.lay && api.lay();
-            
+
             focusfirst(o);
             if (o.load) gfunc(o.load).call(o);
         }
@@ -2483,7 +2483,7 @@ var awe = function ($) {
             if (pid === myId && !mclick) return 1;
 
             var popener = kvIdOpener[pid];
-            if (popener) {                
+            if (popener) {
                 return isChildPopup(popener, myId);
             }
         }
@@ -2777,7 +2777,7 @@ var awe = function ($) {
             popup.trigger('awepos');
         }
 
-        function outClickClose(e) {            
+        function outClickClose(e) {
             var shouldClose;
             if (isNotNull(outsideClickClose)) {
                 shouldClose = outsideClickClose;
@@ -2788,7 +2788,7 @@ var awe = function ($) {
             if (shouldClose) {
                 var tg = trg(e);
                 if (!len(tg.closest($doc))) return;// for change year dd, or rem click.ddp
-                                
+
                 if (!isChildPopup(tg, pp.id)) {
                     if (!tg.closest($opener).length) {
                         api.close({ nofocus: 1, initialEvent: e });
@@ -2894,7 +2894,7 @@ var awe = function ($) {
             focusFirstDesk(o);
 
             popup.trigger('aweopen');
-        };        
+        };
 
         api.close = function (opt) {
             opt = opt || {};
@@ -3369,9 +3369,9 @@ var awe = function ($) {
                 if (k === keyEnter) {
                     tclick(getHov());
                 } else if (k === keyEsc) {//!inline && 
-                    opt.close(); 
+                    opt.close();
                     e.stopPropagation();
-                }                
+                }
             }
         }
 
@@ -3535,26 +3535,7 @@ var awe = function ($) {
         return mine(gdiv.find(sel), gdiv);
     }
 
-    function isTrgChildOrPopupOf(trg, parent) {
-        if (trg.closest(parent).length) {
-            return 1;
-        }
-
-        var popup = trg.closest('.o-pu');
-
-        var popupId;
-
-        if (popup.length) {
-            popupId = popup.data('i');
-        }
-
-        if (popupId) {
-            var opener = kvIdOpener[popupId];
-            if (opener) {
-                return isTrgChildOrPopupOf(opener, parent);
-            }
-        }
-    }
+    
 
     function regGGO(opt) {
         opt.v = $(opt.gdiv);
@@ -3584,43 +3565,58 @@ var awe = function ($) {
         }
 
         if (opt.rowClickEdit) {
-            var activeRowAttr = 'o-ginlactive';
-            bind(opt, gdiv, 'click', '.awe-row[data-k] .o-hasEditor', function (e) {                                
-                
+            var omode = 'o-mode';
+            bind(opt, gdiv, 'click', '.awe-row[data-k] .o-hasEditor', function (e) {
+
                 var trg = $(e.target);
                 if (!trg.closest('.awe-grid').is(gdiv)) return;
 
-                var row = trg.closest('.awe-row');                      
-                   
-                if (row.attr(activeRowAttr)) return;
-                row.attr(activeRowAttr, 1);
+                var row = trg.closest('.awe-row');
+
+                if (row.attr(omode) == 'inlineEdit') return;                
 
                 var k = row.attr('data-k');
 
-                var i = trg.data('i');                
-                
-                $document.trigger('aweleave');
+                var i = trg.data('i');
 
-                if (k) {                    
-                    $.when(opt.objRef.invokeMethodAsync("InlineEditRow", k.toString(), i)).done(function () {
-                        bind(opt, $document, 'click focus aweleave', onLeaveRow)
-                    });
+                if (k) {
+                    opt.objRef.invokeMethodAsync("InlineEditRow", k.toString(), i)
+                }
+            });
+
+            bind(opt, $doc, 'click', function (e) {
+                var trg = $(e.target);
+                var trgCh = getTrgChildFromGridsRow(trg, gdiv)                
+
+                if (trgCh) return;
+                
+                gfindMine('.awe-row[o-mode=inlineEdit]', gdiv).each(function () {
+                    var row = $(this);
+                    var k = row.attr('data-k');
+                    opt.objRef.invokeMethodAsync("Save", k.toString());
+                });
+            });
+
+            function getTrgChildFromGridsRow(trg) {
+                if (trg.closest('.awe-grid').is(gdiv) && trg.closest('.awe-row').length) {
+                    return trg;
                 }
 
-                function onLeaveRow(e) {
-                    if (isTrgChildOrPopupOf($(e.target), row)) {                    
-                        return;
-                    }
+                var popup = trg.closest('.o-pu');
 
-                    // call save on current row
-                    $.when(opt.objRef.invokeMethodAsync("Save", k.toString())).done(function (res) {                     
-                        if (res) {                            
-                            unbind(opt, onLeaveRow);                            
-                            row.removeAttr(activeRowAttr);
-                        }                        
-                    });                    
-                }                
-            });            
+                var popupId;
+
+                if (popup.length) {
+                    popupId = popup.data('i');
+                }
+
+                if (popupId) {
+                    var opener = kvIdOpener[popupId];
+                    if (opener) {
+                        return getTrgChildFromGridsRow(opener);
+                    }
+                }
+            }           
         }
 
         // drag columns grouping and reordering
@@ -3806,12 +3802,12 @@ var awe = function ($) {
         var gdiv = $(opt.gdiv);
         var key = opt.key;
         var cont = gdiv.find('.awe-row[data-k=' + key + ']');
-        var cellIndexToFocus = opt.cellIndexToFocus;        
+        var cellIndexToFocus = opt.cellIndexToFocus;
         if (isNotNull(cellIndexToFocus)) {
             cont = cont.find('[data-i=' + cellIndexToFocus + ']');
         }
 
-        tfocus(tabbable(cont).first());        
+        tfocus(tabbable(cont).first());
     }
 
     function flashRow(opt) {
@@ -4014,7 +4010,7 @@ var awe = function ($) {
                 splh: opt.splh,
                 plh: opt.plhCls,
                 swrap: opt.swrap ? gfunc(opt.swrap) : nul
-            };            
+            };
 
             var dropConts = opt.dropConts;
 
