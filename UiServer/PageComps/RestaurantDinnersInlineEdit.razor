@@ -2,9 +2,7 @@
 @inject CachedItems cache
 <div style="padding: .5em;">
     <div class="bar">
-        <OButton OnClick="() => gopt.State.InlineEdit.Create(new DinnerInput())">Create</OButton>
-        <OButton OnClick="() => gopt.State.InlineEdit.CancelAll()">Cancel all</OButton>
-        <OButton OnClick="async () => await gopt.State.InlineEdit.SaveAllAsync()">Save all</OButton>
+        <OButton OnClick="() => gopt.State.InlineEdit.Create(new DinnerInput())">Add Dinner</OButton>        
     </div>
 
     <OGrid Opt="gopt" />
@@ -79,7 +77,7 @@
         model.Organic = input.Organic;
 
         // add Restaurant parameter
-        model.Restaurant = Restaurant;
+        model.Restaurant = await mcx.FindAsync<Restaurant>(Restaurant.Id);        
 
         if (edstate.IsCreate)
         {

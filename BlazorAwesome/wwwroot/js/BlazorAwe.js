@@ -2483,8 +2483,9 @@ var awe = function ($) {
             if (pid === myId && !mclick) return 1;
 
             var popener = kvIdOpener[pid];
-            if (popener)
+            if (popener) {                
                 return isChildPopup(popener, myId);
+            }
         }
     }
 
@@ -2776,7 +2777,7 @@ var awe = function ($) {
             popup.trigger('awepos');
         }
 
-        function outClickClose(e) {
+        function outClickClose(e) {            
             var shouldClose;
             if (isNotNull(outsideClickClose)) {
                 shouldClose = outsideClickClose;
@@ -2787,7 +2788,7 @@ var awe = function ($) {
             if (shouldClose) {
                 var tg = trg(e);
                 if (!len(tg.closest($doc))) return;// for change year dd, or rem click.ddp
-
+                                
                 if (!isChildPopup(tg, pp.id)) {
                     if (!tg.closest($opener).length) {
                         api.close({ nofocus: 1, initialEvent: e });
@@ -3534,6 +3535,27 @@ var awe = function ($) {
         return mine(gdiv.find(sel), gdiv);
     }
 
+    function isTrgChildOrPopupOf(trg, parent) {
+        if (trg.closest(parent).length) {
+            return 1;
+        }
+
+        var popup = trg.closest('.o-pu');
+
+        var popupId;
+
+        if (popup.length) {
+            popupId = popup.data('i');
+        }
+
+        if (popupId) {
+            var opener = kvIdOpener[popupId];
+            if (opener) {
+                return isTrgChildOrPopupOf(opener, parent);
+            }
+        }
+    }
+
     function regGGO(opt) {
         opt.v = $(opt.gdiv);
         opt.cont = $(opt.cont);
@@ -3555,42 +3577,46 @@ var awe = function ($) {
                 var trg = $(e.target);
                 if (!trg.closest('.awe-grid').is(gdiv)) return;
                 if (trg.closest('button, .awe-field').length) return;
-                var k = trg.closest('.awe-row').data('k');
+                var k = trg.closest('.awe-row').attr('data-k');
 
                 opt.objRef.invokeMethodAsync("RowClick", k.toString());
             });
         }
 
         if (opt.rowClickEdit) {
-            bind(opt, gdiv, 'click', '.awe-row[data-k] .o-hasEditor', function (e) {                
+            var activeRowAttr = 'o-ginlactive';
+            bind(opt, gdiv, 'click', '.awe-row[data-k] .o-hasEditor', function (e) {                                
+                
                 var trg = $(e.target);
                 if (!trg.closest('.awe-grid').is(gdiv)) return;
-                if (trg.closest('button, .awe-field').length) return;
-                var row = trg.closest('.awe-row');
-                var k = row.data('k');
 
-                var i = trg.data('i');
+                var row = trg.closest('.awe-row');                      
+                   
+                if (row.attr(activeRowAttr)) return;
+                row.attr(activeRowAttr, 1);
 
-                console.log('k', k, i);
-                if (k) {
+                var k = row.attr('data-k');
+
+                var i = trg.data('i');                
+                
+                $document.trigger('aweleave');
+
+                if (k) {                    
                     $.when(opt.objRef.invokeMethodAsync("InlineEditRow", k.toString(), i)).done(function () {
-                        bind(opt, $document, 'click focus', onLeaveRow)
+                        bind(opt, $document, 'click focus aweleave', onLeaveRow)
                     });
                 }
 
                 function onLeaveRow(e) {
-                    if ($(e.target).closest(row).length) {
-                        console.log('cancel leave');
+                    if (isTrgChildOrPopupOf($(e.target), row)) {                    
                         return;
                     }
 
-                    console.log('leave');
-
                     // call save on current row
-                    $.when(opt.objRef.invokeMethodAsync("Save", k.toString())).done(function (res) {
-                        console.log('res =', res);
+                    $.when(opt.objRef.invokeMethodAsync("Save", k.toString())).done(function (res) {                     
                         if (res) {                            
-                            unbind(opt, onLeaveRow);
+                            unbind(opt, onLeaveRow);                            
+                            row.removeAttr(activeRowAttr);
                         }                        
                     });                    
                 }                
@@ -3780,8 +3806,7 @@ var awe = function ($) {
         var gdiv = $(opt.gdiv);
         var key = opt.key;
         var cont = gdiv.find('.awe-row[data-k=' + key + ']');
-        var cellIndexToFocus = opt.cellIndexToFocus;
-        console.log('focus', cellIndexToFocus);
+        var cellIndexToFocus = opt.cellIndexToFocus;        
         if (isNotNull(cellIndexToFocus)) {
             cont = cont.find('[data-i=' + cellIndexToFocus + ']');
         }

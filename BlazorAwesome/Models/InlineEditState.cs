@@ -171,8 +171,9 @@ namespace Omu.BlazorAwesome.Models
                 editStates.Remove(cx.Key);
                 res = true;
             }
-
+            
             await GetOpt.State.LoadAsync(new() { Partial = true });
+            
             return res;
         }
 

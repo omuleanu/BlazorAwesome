@@ -236,22 +236,23 @@ else if (Model.Groups != null && !collapsed)
     {
         var colix = 0;
         return @<CascadingValue Value="cx.EditContext">
-        @foreach (var cs in State.VisibleColumns)
+        @foreach (var columnState in State.VisibleColumns)
         {
+            var editorClass = columnState.Column.GetEditor() != null ? "o-hasEditor" : null;
             var cspan = colix == 0 ? colspan : null;
-            <td colspan="@cspan" data-i="@(colix)">
+            <td colspan="@cspan" data-i="@(colix)" class="@(columnState.Column.CssClass) @editorClass">
                 @if (node && colix == 0)
                 {
                     @renderCollapseButton()
                 }
-                @if (cs.Column.GetEditor() != null)
+                @if (columnState.Column.GetEditor() != null)
                 {
-                    @renderInlineCellContent(cx, cs.Column)
+                    @renderInlineCellContent(cx, columnState.Column)
                     ;
                 }
                 else
                 {
-                    @renderCellContent(cs.Column, cx.Item)
+                    @renderCellContent(columnState.Column, cx.Item)
                 }
             </td>
             colix++;
