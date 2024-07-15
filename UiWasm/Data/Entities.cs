@@ -64,6 +64,11 @@ namespace UiWasm.Data
         public ICollection<Lunch> Lunches { get; set; }
     }
 
+    public class Restaurant : Entity
+    {
+        public string Name { get; set; }
+    }
+
     public class Dinner : Entity
     {
         public string Name { get; set; }
@@ -74,6 +79,9 @@ namespace UiWasm.Data
         public Meal BonusMeal { get; set; }
         public string Comments { get; set; }
         public bool Organic { get; set; }
+        
+        // used by master detail inline edit demo
+        public Restaurant Restaurant { get; set; }
     }
 
     public class Lunch : Entity
@@ -111,24 +119,6 @@ namespace UiWasm.Data
         public string Location { get; set; }
 
         public string Meal { get; set; }
-    }
-
-    public class Restaurant : Entity
-    {
-        public string Name { get; set; }
-
-        public bool IsCreated { get; set; }
-    }
-
-    public class RestaurantAddress : Entity
-    {
-        public int RestaurantId { get; set; }
-
-        public string Line1 { get; set; }
-
-        public string Line2 { get; set; }
-
-        public Chef Chef { get; set; }
     }
 
     public class TreeNode : Entity
