@@ -397,7 +397,7 @@ else if (Model.Groups != null && !collapsed)
         var idn = State.Groups.Count();
 
         return
-    @<tr @key="cx.Key" data-k="@cx.Key" class="awe-row @itmClass(cx.Item)">
+    @<tr @key="cx.Key" data-k="@cx.Key" class="awe-row @itmClass(cx.Item)" o-mode="inlineEdit">
         @itemIdn(Model.Depth)
         @renderInlineCells(cx, colspan, header)
     </tr>;
