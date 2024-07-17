@@ -3564,13 +3564,13 @@ var awe = function ($) {
             });
         }
 
-        if (opt.rowClickEdit) {
+        if (opt.rowClickEdit) {            
             var omode = 'o-mode';
             bind(opt, gdiv, 'click', '.awe-row[data-k] .o-hasEditor', function (e) {
-
+                
                 var trg = $(e.target);
                 if (!trg.closest('.awe-grid').is(gdiv)) return;
-
+                
                 var row = trg.closest('.awe-row');
 
                 if (row.attr(omode) == 'inlineEdit') return;                
@@ -3578,15 +3578,23 @@ var awe = function ($) {
                 var k = row.attr('data-k');
 
                 var i = trg.data('i');
+                
+                if (k) { 
+                    // flag to prevent immediate bubble up outclick
+                    e.originalEvent.aweGrid = gdiv;
 
-                if (k) {
-                    opt.objRef.invokeMethodAsync("InlineEditRow", k.toString(), i)
+                    opt.objRef.invokeMethodAsync("InlineEditRow", k.toString(), i);
                 }
             });
 
-            bind(opt, $doc, 'click', function (e) {
+            // call save on click outside grid and click to edit areas
+            bind(opt, $doc, 'click', function (e) {                                                
+                if (e.originalEvent.aweGrid == gdiv) {                    
+                    return;
+                }
+
                 var trg = $(e.target);
-                var trgCh = getTrgChildFromGridsRow(trg, gdiv)                
+                var trgCh = getTrgChildFromGridsRow(trg, gdiv);
 
                 if (trgCh) return;
                 
@@ -3806,7 +3814,7 @@ var awe = function ($) {
         if (isNotNull(cellIndexToFocus)) {
             cont = cont.find('[data-i=' + cellIndexToFocus + ']');
         }
-
+        
         tfocus(tabbable(cont).first());
     }
 
