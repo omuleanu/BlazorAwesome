@@ -82,7 +82,7 @@ var site = function () {
 
         var res = await fetch(url);
         if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
+            return 'error loading source from github';
         }
 
         const raw = await res.text();
