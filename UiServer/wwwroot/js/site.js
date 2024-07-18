@@ -220,7 +220,10 @@ var strUtil = function () {
             'RestaurantDinnersInlineEdit',
             'GridFilterRow',
             'DragDropAB',
-            'DragDropGroups '];
+            'DragDropGroups',
+            'DragCardsAndItems',
+            'DragAndDropCount',
+            'DragAndDropHandle'];
 
         var res = '';
         for (var i = 0; i < str.length; i++) {

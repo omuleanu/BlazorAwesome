@@ -104,17 +104,17 @@ var site = function () {
             return;
         }
 
-        
+
         btn.html("hide code");
         codeWrap.show();
     }
 
     var history = [];
 
-    function renderHistory() {        
+    function renderHistory() {
         var res = '';
         for (let i = 0; i < history.length; i++) {
-            
+
             if (i) res += '\\';
             res += `<button type="button" class="awe-btn histbtn" data-i="${i}">${history[i].caption}</button>`;
         }
@@ -125,14 +125,14 @@ var site = function () {
     $(document).on('click', '.histbtn', async function () {
         var i = $(this).data('i');
         var hitm = history[i];
-        
+
         history = history.slice(0, i + 1);
         await loadCode(hitm);
     });
 
     async function loadCode(hitm) {
         var codeCont = $('#showCodeCont').html('loading...');
-        var source = await loadSourceCode(hitm.url);        
+        var source = await loadSourceCode(hitm.url);
         var parsedCode = strUtil.getCode(source);
 
         $('.codeHistory').html(renderHistory());
@@ -141,18 +141,18 @@ var site = function () {
 
         site.prettyPrint();
     }
-    
-    $(document).on('click', '.shcode', async function (e) {        
+
+    $(document).on('click', '.shcode', async function (e) {
         var btn = $(this);
-        btn.toggleClass("codeHidden");        
+        btn.toggleClass("codeHidden");
         var hidden = btn.hasClass("codeHidden");
 
         setShowCodeState(hidden);
 
-        if (hidden) {            
+        if (hidden) {
             return;
         }
-        
+
         var page = $(this).attr('page');
         page = !page ? 'Index' : page + 'Page';
 
@@ -167,9 +167,9 @@ var site = function () {
 
     $(document).on('click',
         '.funcLink',
-        async function (e) {            
+        async function (e) {
             e.preventDefault();
-            var o = $(this);          
+            var o = $(this);
             var cname = o.data('name');
             var name = "PageComps/" + cname + ".razor";
 
@@ -180,7 +180,7 @@ var site = function () {
         });
 
     function pageChange() {
-        setShowCodeState(1);        
+        setShowCodeState(1);
     }
 
     return {
@@ -220,7 +220,10 @@ var strUtil = function () {
             'RestaurantDinnersInlineEdit',
             'GridFilterRow',
             'DragDropAB',
-            'DragDropGroups '];
+            'DragDropGroups',
+            'DragCardsAndItems',
+            'DragAndDropCount',
+            'DragAndDropHandle'];
 
         var res = '';
         for (var i = 0; i < str.length; i++) {
@@ -281,9 +284,9 @@ var strUtil = function () {
         return index;
     }
 
-    return {        
-        getCode: function (str) {            
-            var lines = str.split('\n');            
+    return {
+        getCode: function (str) {
+            var lines = str.split('\n');
 
             lines = strUtil.remStartSpace(lines);
 
