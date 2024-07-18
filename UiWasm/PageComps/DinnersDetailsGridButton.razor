@@ -1,0 +1,18 @@
+@if (Entity is not null)
+{
+    <OButton CssClass="@RestaurantGridOpt.State.Nesting.NestClass(Entity.Id)"
+             OnClick="OnClick">
+        <i class="o-caretc"><i class="o-caret"></i></i> dinners
+    </OButton>
+}
+
+@code {
+    [Parameter]
+    public GridOpt<Restaurant> RestaurantGridOpt { get; set; }
+    
+    [Parameter]
+    public Restaurant Entity { get; set; }   
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+}

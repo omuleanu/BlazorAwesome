@@ -324,7 +324,7 @@ var awe = function ($) {
     var popTopSpace = 0;
     var clickOutSpace = 35;
     var hpSpace = popSpace / 2;
-    var hpHorizSpace = popHorizSpace / 2;    
+    var hpHorizSpace = popHorizSpace / 2;
     var maxDropdownHeight = 420;
     var menuMinh = 200;
 
@@ -396,7 +396,7 @@ var awe = function ($) {
     var max = Math.max, min = Math.min, round = Math.round;
 
     var kvIdOpener = {};
-    var storage = {};    
+    var storage = {};
 
     var isMobile = function () { return awe.isMobile(); };
 
@@ -1053,7 +1053,7 @@ var awe = function ($) {
             if (!donotset) scon.html(content);
             api.ld = 1;
             api.lay && api.lay();
-            
+
             focusfirst(o);
             if (o.load) gfunc(o.load).call(o);
         }
@@ -2483,8 +2483,9 @@ var awe = function ($) {
             if (pid === myId && !mclick) return 1;
 
             var popener = kvIdOpener[pid];
-            if (popener)
+            if (popener) {
                 return isChildPopup(popener, myId);
+            }
         }
     }
 
@@ -2893,7 +2894,7 @@ var awe = function ($) {
             focusFirstDesk(o);
 
             popup.trigger('aweopen');
-        };        
+        };
 
         api.close = function (opt) {
             opt = opt || {};
@@ -3368,9 +3369,9 @@ var awe = function ($) {
                 if (k === keyEnter) {
                     tclick(getHov());
                 } else if (k === keyEsc) {//!inline && 
-                    opt.close(); 
+                    opt.close();
                     e.stopPropagation();
-                }                
+                }
             }
         }
 
@@ -3534,6 +3535,8 @@ var awe = function ($) {
         return mine(gdiv.find(sel), gdiv);
     }
 
+    
+
     function regGGO(opt) {
         opt.v = $(opt.gdiv);
         opt.cont = $(opt.cont);
@@ -3555,10 +3558,73 @@ var awe = function ($) {
                 var trg = $(e.target);
                 if (!trg.closest('.awe-grid').is(gdiv)) return;
                 if (trg.closest('button, .awe-field').length) return;
-                var k = trg.closest('.awe-row').data('k');
+                var k = trg.closest('.awe-row').attr('data-k');
 
                 opt.objRef.invokeMethodAsync("RowClick", k.toString());
             });
+        }
+
+        if (opt.rowClickEdit) {            
+            var omode = 'o-mode';
+            bind(opt, gdiv, 'click', '.awe-row[data-k] .o-hasEditor', function (e) {
+                
+                var trg = $(e.target);
+                if (!trg.closest('.awe-grid').is(gdiv)) return;
+                
+                var row = trg.closest('.awe-row');
+
+                if (row.attr(omode) == 'inlineEdit') return;                
+
+                var k = row.attr('data-k');
+
+                var i = trg.data('i');
+                
+                if (k) { 
+                    // flag to prevent immediate bubble up outclick
+                    e.originalEvent.aweGrid = gdiv;
+
+                    opt.objRef.invokeMethodAsync("InlineEditRow", k.toString(), i);
+                }
+            });
+
+            // call save on click outside grid and click to edit areas
+            bind(opt, $doc, 'click', function (e) {                                                
+                if (e.originalEvent.aweGrid == gdiv) {                    
+                    return;
+                }
+
+                var trg = $(e.target);
+                var trgCh = getTrgChildFromGridsRow(trg, gdiv);
+
+                if (trgCh) return;
+                
+                gfindMine('.awe-row[o-mode=inlineEdit]', gdiv).each(function () {
+                    var row = $(this);
+                    var k = row.attr('data-k');
+                    opt.objRef.invokeMethodAsync("Save", k.toString());
+                });
+            });
+
+            function getTrgChildFromGridsRow(trg) {
+                if (trg.closest('.awe-grid').is(gdiv) && trg.closest('.awe-row').length) {
+                    return trg;
+                }
+
+                var popup = trg.closest('.o-pu');
+
+                var popupId;
+
+                if (popup.length) {
+                    popupId = popup.data('i');
+                }
+
+                if (popupId) {
+                    var opener = kvIdOpener[popupId];
+                    if (opener) {
+                        return getTrgChildFromGridsRow(opener);
+                    }
+                }
+            }           
         }
 
         // drag columns grouping and reordering
@@ -3743,8 +3809,13 @@ var awe = function ($) {
     function inlfcs(opt) {
         var gdiv = $(opt.gdiv);
         var key = opt.key;
-        var row = gdiv.find('.awe-row[data-k=' + key + ']');
-        tfocus(tabbable(row).first());        
+        var cont = gdiv.find('.awe-row[data-k=' + key + ']');
+        var cellIndexToFocus = opt.cellIndexToFocus;
+        if (isNotNull(cellIndexToFocus)) {
+            cont = cont.find('[data-i=' + cellIndexToFocus + ']');
+        }
+        
+        tfocus(tabbable(cont).first());
     }
 
     function flashRow(opt) {
@@ -3878,7 +3949,7 @@ var awe = function ($) {
     initWave();
 
     return {
-        version: '1.2.10',
+        version: '1.3.0',
         pnn: preventNonNumbers,
         openOnHover: openOnHover,
         tabbable: tabbable,
@@ -3947,7 +4018,7 @@ var awe = function ($) {
                 splh: opt.splh,
                 plh: opt.plhCls,
                 swrap: opt.swrap ? gfunc(opt.swrap) : nul
-            };            
+            };
 
             var dropConts = opt.dropConts;
 

@@ -21,7 +21,7 @@ namespace UiWasm.Data
         public static IEnumerable<ParentMeal> ParentMeals => parentMeals.Values.Where(o => !o.IsDeleted);
         public static IEnumerable<Message> Messages => messages.Values.Where(o => !o.IsDeleted);
         public static IEnumerable<Restaurant> Restaurants => restaurants.Values.Where(o => !o.IsDeleted);
-        public static IEnumerable<RestaurantAddress> RestaurantAddresses => restaurantAddresses.Values.Where(o => !o.IsDeleted);
+        
         public static IEnumerable<TreeNode> TreeNodes => treeNodes.Values.Where(o => !o.IsDeleted);
         public static IEnumerable<Spreadsheet> Spreadsheets => spreadsheets.Values.Where(o => !o.IsDeleted);
         public static IEnumerable<Meeting> Meetings => meetings.Values.Where(o => !o.IsDeleted);
@@ -31,7 +31,7 @@ namespace UiWasm.Data
         private static readonly ConcurrentDictionary<int, Message> messages = new ConcurrentDictionary<int, Message>();
         private static readonly ConcurrentDictionary<int, Spreadsheet> spreadsheets = new ConcurrentDictionary<int, Spreadsheet>();
         private static readonly ConcurrentDictionary<int, Restaurant> restaurants = new ConcurrentDictionary<int, Restaurant>();
-        private static readonly ConcurrentDictionary<int, RestaurantAddress> restaurantAddresses = new ConcurrentDictionary<int, RestaurantAddress>();
+        
         private static readonly ConcurrentDictionary<int, TreeNode> treeNodes = new ConcurrentDictionary<int, TreeNode>();
         private static readonly ConcurrentDictionary<int, Meeting> meetings = new ConcurrentDictionary<int, Meeting>();
 
@@ -193,7 +193,7 @@ namespace UiWasm.Data
             restore(messages.Values);
             restore(meetings.Values);
             restore(restaurants.Values);
-            restore(restaurantAddresses.Values);
+            
             restore(spreadsheets.Values);
             restore(treeNodes.Values);
             restore(meetings.Values);
@@ -212,6 +212,7 @@ namespace UiWasm.Data
             if (type == typeof(Meal)) return Meals;
             if (type == typeof(Food)) return Foods;
             if (type == typeof(Category)) return Categories;
+            
             return null;
         }
 
@@ -223,10 +224,10 @@ namespace UiWasm.Data
             if (type == typeof(ParentMeal)) return parentMeals;
             if (type == typeof(Message)) return messages;
             if (type == typeof(Spreadsheet)) return spreadsheets;
-            if (type == typeof(Restaurant)) return restaurants;
-            if (type == typeof(RestaurantAddress)) return restaurantAddresses;
+            if (type == typeof(Restaurant)) return restaurants;            
             if (type == typeof(TreeNode)) return treeNodes;
             if (type == typeof(Meeting)) return meetings;
+            if (type == typeof(Restaurant)) return Restaurants;
 
             return null;
         }
@@ -348,6 +349,13 @@ namespace UiWasm.Data
                 "Central Perk", "Island Diner", "Dream Cafe", "Cleveland's Deli", "Don't Drop Inn", "The Happy Sumo", "The Hungry Hun", "Krusty Burger", "Luigi's",
                 "Big T Burgers and Fries", "Pizza on a stick" };
 
+            foreach (var restaurantName in restaurantNames.Reverse())
+            {
+                var restaurant = new Restaurant { Name = restaurantName };
+
+                Insert(restaurant);                
+            }
+
             foreach (var fname in foodNames)
             {
                 add(new Food { Name = fname });
@@ -361,16 +369,7 @@ namespace UiWasm.Data
             foreach (var o in dinnerNames)
             {
                 AddDinner(o);
-            }
-
-            foreach (var restaurantName in restaurantNames.Reverse())
-            {
-                var restaurant = Insert(new Restaurant { Name = restaurantName, IsCreated = true });
-                Insert(new RestaurantAddress { RestaurantId = restaurant.Id, Line1 = Rnd(ppl) + " square " + R.Next(10, 15), Chef = Rnd(Chefs) });
-                Insert(new RestaurantAddress { RestaurantId = restaurant.Id, Line1 = Rnd(ppl) + " street " + R.Next(10, 35), Chef = Rnd(Chefs) });
-
-                Organisations.Add(new Organisation { Id = Guid.NewGuid(), Name = restaurantName });
-            }
+            }            
 
             IDictionary<string, List<string>> personFood = ppl.ToDictionary(o => o, o => new List<string>());
             IDictionary<string, int> personTimes = ppl.ToDictionary(o => o, o => 0);
@@ -498,7 +497,9 @@ namespace UiWasm.Data
                 Chef = Rnd(Chefs),
                 Meals = RndMeals().ToList(),
                 BonusMeal = Rnd(Meals),
-                Organic = R.Next(10) > 3
+                Organic = R.Next(10) > 3,
+
+                Restaurant = R.Next(10) > 1 ? Rnd(Restaurants.ToList()) : null
             });
         }
 

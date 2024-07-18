@@ -1,0 +1,40 @@
+﻿@inject NavigationManager NavManager
+@inject IJSRuntime JS
+<div>
+    <button type="button" class="awe-btn shcode codeHidden" page="@(getValue())">show code</button>
+</div>
+<div class="codeWrap" style="display:none;">
+    <div class="codePath"></div>
+    <div class="codeHistory"></div>    
+    <pre id="showCodeCont" class="lang-java prettyprint"></pre>
+</div>
+@code {
+
+    private string getValue()
+    {
+        var key = NavManager.ToBaseRelativePath(NavManager.Uri);
+        var qi = key.IndexOf("?");
+        if (qi > -1)
+        {
+            key = key.Substring(0, qi);
+        }
+
+        if (key.Length > 0 && key.Last() == '/')
+        {
+            key = key.Substring(0, key.Length - 1);
+        }
+
+        return key;
+    }
+
+    protected override Task OnInitializedAsync()
+    {
+        NavManager.LocationChanged += (sender, args) =>
+        {
+            JS.InvokeAsync<IJSObjectReference>("site.pageChange");
+            StateHasChanged();
+        };
+
+        return base.OnInitializedAsync();
+    }
+}

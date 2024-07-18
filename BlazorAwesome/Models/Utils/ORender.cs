@@ -167,7 +167,7 @@ namespace Omu.BlazorAwesome.Models.Utils
                 Width = 100,
                 Render = InlEditButton(gopt, receiver)
             }
-            .Editor(InlSaveButton(gopt, receiver));
+            .Editor(InlSaveButton(gopt, receiver), true);
         }
 
         /// <summary>
@@ -180,7 +180,7 @@ namespace Omu.BlazorAwesome.Models.Utils
                 Label = "delete action",
                 Width = 100,
                 Render = itm => Button(receiver, "Delete", () => confirmDelete(itm))
-            }.Editor(cx => Button(receiver, "Cancel", () => gopt.State.InlineEdit.Cancel(cx.EditItemState)));
+            }.Editor(cx => Button(receiver, "Cancel", () => gopt.State.InlineEdit.Cancel(cx.EditItemState)), true);
         }
 
         /// <summary>

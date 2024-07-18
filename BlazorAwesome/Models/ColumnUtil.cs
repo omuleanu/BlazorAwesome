@@ -54,11 +54,12 @@ namespace Omu.BlazorAwesome.Models
         /// <summary>
         /// Set column editor
         /// </summary>
-        public static Column<T> Editor<T>(this Column<T> column, Func<ColumnEditorContext<T>, RenderFragment> render)
+        public static Column<T> Editor<T>(this Column<T> column, Func<ColumnEditorContext<T>, RenderFragment> render, bool isAction = false)
         {
             return AddColumnOpt(column, ColumnOpt.Editor, new GridEditor<T>
             {
-                Render = render
+                Render = render,
+                IsAction = isAction
             });
         }
 

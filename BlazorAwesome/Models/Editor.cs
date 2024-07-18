@@ -12,5 +12,10 @@ namespace Omu.BlazorAwesome.Models
         /// Grid column render function
         /// </summary>
         public Func<ColumnEditorContext<TModel>, RenderFragment> Render { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public bool IsAction { get; set; }
     }
 }

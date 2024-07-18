@@ -25,7 +25,7 @@ namespace UiServer.Utils
 
         public const string ThemeCookieName = "awetheme";
 
-        public static string DefaultTheme => Themes[0].Key.ToString();
+        public static string DefaultTheme => Themes[3].Key.ToString();
 
         public static string PickedTheme { get; set; }
 

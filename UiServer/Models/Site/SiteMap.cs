@@ -1,5 +1,4 @@
-﻿using static UiServer.Shared.NavMenu;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace UiServer.Models.Site
 {
@@ -13,6 +12,7 @@ namespace UiServer.Models.Site
         new("Popup", "Popup") { Keywords = "form open"},
         new("GridInlineEdit", "Grid Inline Editing") { Keywords = "crud"},
         new("GridNestCrud", "Grid Nest Crud"),
+        new("GridMasterDetailWithInlinEdit", "Grid Master Detail With Inline Editing"),
         new("GridCrud", "Grid Popup Crud") { Keywords = "create edit delete"},
         new("GridFilterRow", "Grid Filter Row") { Keywords = "search"},
         new("GridGrouping", "Grid Grouping") { Keywords = "aggregates"},

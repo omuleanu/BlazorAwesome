@@ -1,0 +1,153 @@
+@page "/GridMasterDetailWithInlinEdit"
+@using Omu.BlazorAwesome.Core
+<div class="expl">
+    Master detail grid with inline editing for both the master and the detail grid.<br/>
+    InlineEdit.RowClickEdit is set for both master and detail grid, so we can enter the grid row's edit mode simply by clicking on the editable cells.
+</div>
+<br />
+<div class="bar">
+    <OButton OnClick="() => restaurantGridOpt.State.InlineEdit.Create(new RestaurantInput())">Create</OButton>
+    <OButton OnClick="() => restaurantGridOpt.State.InlineEdit.CancelAll()">Cancel all</OButton>
+    <OButton OnClick="async () => await restaurantGridOpt.State.InlineEdit.SaveAllAsync()">Save all</OButton>
+</div>
+
+<OGrid Opt="restaurantGridOpt" @ref="restaurantGridRef" />
+
+<OConfirm @ref="delPopup" ModOpt="setConfirmOpt">
+    Are you sure you want to delete restaurant: <b>@delName</b> ?
+</OConfirm>
+<br />
+<br />
+
+@code
+{
+    private OConfirm delPopup;
+    private string delName;
+
+    // used to higlight row when confirming delete
+    private int? delKey;
+
+    private OGrid<Restaurant> restaurantGridRef;
+
+    private GridOpt<Restaurant> restaurantGridOpt = new();
+
+    protected override void OnInitialized()
+    {
+        initGrid();
+    }
+
+    private void setConfirmOpt(PopupOpt opt)
+    {
+        opt.OnClose = async () =>
+        {
+            delKey = null;
+            restaurantGridOpt.State.Render();
+        };
+    }
+
+    private void confirmDelete(Restaurant item)
+    {
+        delName = item.Name;
+        delKey = item.Id;
+        delPopup.Open(async () =>
+        {
+            Db.Remove<Restaurant>(item);
+
+            await restaurantGridOpt.State.LoadAsync();
+        });
+    }
+
+    private RenderFragment getRestaurantDetailsNest(Restaurant entity)
+    {
+        return @<RestaurantDinnersInlineEdit Restaurant="entity"></RestaurantDinnersInlineEdit>;
+    }
+
+    private void initGrid()
+    {
+        restaurantGridOpt.KeyProp = m => m.Id;
+        restaurantGridOpt.GetQuery = () => Db.Restaurants.AsQueryable();
+
+        restaurantGridOpt.Column(new Column<Restaurant>()
+            {
+                Width = 150,
+                Label = "edit",
+                Render = restaurant => @<DinnersDetailsGridButton Entity="restaurant"
+                RestaurantGridOpt="restaurantGridOpt"
+                          OnClick="() => restaurantGridOpt.State.Nesting.ToggleOpen(new(){ Key = restaurant.Id, Render = getRestaurantDetailsNest(restaurant)})" />
+        });
+
+        restaurantGridOpt.Column(new()
+            {
+                For = c => c.Id,
+                Width = 100
+            });
+
+        restaurantGridOpt.Column(new()
+            {
+                For = c => c.Name
+            })
+            .Editor(ORender.TextBox(restaurantGridOpt));
+
+        restaurantGridOpt.Column(ORender.InlEditColumn(this, restaurantGridOpt));
+        restaurantGridOpt.Column(ORender.InlDeleteColumn(this, restaurantGridOpt, confirmDelete));
+
+        restaurantGridOpt.RowClassFunc = itm =>
+        {
+            if (itm is not null && delKey == itm.Id)
+            {
+                return "awe-hl";
+            }
+
+            return null;
+        };
+
+        restaurantGridOpt.InlineEdit = new();
+
+        restaurantGridOpt.InlineEdit.RowClickEdit = true;
+
+        restaurantGridOpt.InlineEdit.GetModel = entity => new RestaurantInput
+            {
+                Id = entity.Id,
+                Name = entity.Name
+            };
+
+        restaurantGridOpt.InlineEdit.SaveAll = async items =>
+            {
+                var saved = new List<string>();
+                foreach (var state in items)
+                {
+                    if (await saveItemAsync(state))
+                    {
+                        saved.Add(state.Key);
+                    }
+                }
+
+                return saved;
+            };
+    }
+
+    private async Task<bool> saveItemAsync(EditItemState<Restaurant> edstate)
+    {
+        var input = (RestaurantInput)edstate.Input;
+
+        if (!edstate.EditContext.Validate()) return false;
+
+        var model = edstate.IsCreate ? new() :
+            Db.Restaurants            
+            .First(o => o.Id == input.Id);
+
+        model.Name = input.Name;
+        
+        if (edstate.IsCreate)
+        {
+            Db.Add<Restaurant>(model);
+        }
+        else
+        {
+            Db.Update(model);
+        }
+
+        AweUtil.FlashRow(restaurantGridOpt, model.Id);
+        return true;
+    }
+}

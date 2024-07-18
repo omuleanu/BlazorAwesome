@@ -959,10 +959,16 @@ a.awe-btn {
     text-decoration: none;
 }
 
-.shcode {
-    cursor: pointer;
-    color: rgb(0, 6, 101);
-    border: none;
+.histbtn {
+    margin: .2em;
+    padding: .2em .5em;
+}
+
+.shcode, .histbtn {
+    cursor: pointer;    
+    background-color: transparent;
+    background-image: none;
+    border-color: transparent;
     text-decoration: underline;
     display: inline-block;
 }

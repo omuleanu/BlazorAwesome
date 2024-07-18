@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
-using System.Collections.Generic;
 
 namespace Omu.BlazorAwesome.Models
 {
@@ -24,7 +23,8 @@ namespace Omu.BlazorAwesome.Models
         public T Item { get; set; }
 
         /// <summary>
-        /// State input
+        /// Edit item input value object, 
+        /// for each editor this object will have a property that will hold its value
         /// </summary>
         public object Input { get; set; }
 

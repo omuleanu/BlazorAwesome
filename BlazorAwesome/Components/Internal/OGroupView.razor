@@ -175,8 +175,10 @@ else if (Model.Groups != null && !collapsed)
             }
         };
 
+        var mode = itemState is null ? string.Empty : "inlineEdit";
+
         return
-        @<tr data-k="@key" class="awe-row @itmClass(itm) @headerCssClass">
+        @<tr data-k="@key" class="awe-row @itmClass(itm) @headerCssClass" o-mode="@mode">
         @itemIdn(Model.Depth)
         @if (itemState is null)
         {
@@ -236,22 +238,24 @@ else if (Model.Groups != null && !collapsed)
     {
         var colix = 0;
         return @<CascadingValue Value="cx.EditContext">
-        @foreach (var cs in State.VisibleColumns)
+        @foreach (var columnState in State.VisibleColumns)
         {
+            var editor = columnState.Column.GetEditor();
+            var editorClass = editor != null && !editor.IsAction ? "o-hasEditor" : null;
             var cspan = colix == 0 ? colspan : null;
-            <td colspan="@cspan">
+            <td colspan="@cspan" data-i="@(colix)" class="@(columnState.Column.CssClass) @editorClass">
                 @if (node && colix == 0)
                 {
                     @renderCollapseButton()
                 }
-                @if (cs.Column.GetEditor() != null)
+                @if (editor != null)
                 {
-                    @renderInlineCellContent(cx, cs.Column)
+                    @renderInlineCellContent(cx, columnState.Column)
                     ;
                 }
                 else
                 {
-                    @renderCellContent(cs.Column, cx.Item)
+                    @renderCellContent(columnState.Column, cx.Item)
                 }
             </td>
             colix++;
@@ -264,16 +268,19 @@ else if (Model.Groups != null && !collapsed)
         var colix = 0;
         return
     @<text>
-        @foreach (var cs in State.VisibleColumns)
+        @foreach (var columnState in State.VisibleColumns)
         {
             var cspan = colix == 0 ? colspan : null;
+            var editor = columnState.Column.GetEditor();
+            
+            var editorClass = editor != null && !editor.IsAction ? "o-hasEditor" : null;
 
-            <td colspan="@cspan" class="@(cs.Column.CssClass)">
+            <td colspan="@cspan" class="@(columnState.Column.CssClass) @editorClass" data-i="@(colix)">
                 @if (node && colix == 0)
                 {
                     @renderCollapseButton()
                 }
-                @renderCellContent(cs.Column, itm)
+                @renderCellContent(columnState.Column, itm)
             </td>
             colix++;
         }
@@ -390,7 +397,7 @@ else if (Model.Groups != null && !collapsed)
         var idn = State.Groups.Count();
 
         return
-    @<tr @key="cx.Key" data-k="@cx.Key" class="awe-row @itmClass(cx.Item)">
+    @<tr @key="cx.Key" data-k="@cx.Key" class="awe-row @itmClass(cx.Item)" o-mode="inlineEdit">
         @itemIdn(Model.Depth)
         @renderInlineCells(cx, colspan, header)
     </tr>;
