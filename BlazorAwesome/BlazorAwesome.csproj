@@ -9,7 +9,7 @@
 		<AssemblyOriginatorKeyFile>bawe.snk</AssemblyOriginatorKeyFile>
 		<Configurations>Debug;Release</Configurations>
 		<AssemblyTitle>Blazor Awesome Components</AssemblyTitle>
-		<Version>1.2.1</Version>
+		<Version>1.3.0</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
