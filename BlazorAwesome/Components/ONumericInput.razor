@@ -91,6 +91,7 @@ newOpFlag: @newOpFlag *@
         }
     }
 
+    private string boundValueBeforeChange;
     public string BoundValue
     {
         get
@@ -100,6 +101,7 @@ newOpFlag: @newOpFlag *@
         }
         set
         {
+            boundValueBeforeChange = strValue;
             strValue = value; // modify the value according to constrains in bind:after func
         }
     }
@@ -131,12 +133,13 @@ newOpFlag: @newOpFlag *@
             value = string.Empty;
         }
 
-        if (value != strValue || newStrValue != strValue)
+        if (value != boundValueBeforeChange || newStrValue != boundValueBeforeChange)
         {
             strValue = value;
             await ValueChanged.InvokeAsync(Value);
-            await afterChange();     
+            await afterChange();
 
+            StateHasChanged();
             FieldChanged();            
         }
     }    
