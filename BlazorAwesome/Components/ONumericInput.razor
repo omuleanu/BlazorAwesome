@@ -13,8 +13,8 @@
         <input @onfocusin="OnFocusin"
                @onfocusout="OnFocusout"
                @ref="editor"
-               value="@InputVal"
-               @onchange="onInputValChange"
+               @bind="BoundValue"
+               @bind:after="onInputValChange2"
                type="text"
                class="@inputClass"
                disabled="@(IsDisabled)"
@@ -42,11 +42,12 @@
 </div>
 @*@timesRendered
 @flag;*@
-@*strValue: @strValue value: @Value
-newOpFlag: @newOpFlag*@
+@* focused: @inputFocused
+strValue: @strValue Value: @Value
+newOpFlag: @newOpFlag *@
 @code {
     private DotNetObjectReference<ONumericInput<TValue>> objRef;
-    private ElementReference editor;    
+    private ElementReference editor;
     protected string strValue = string.Empty;
     private string separator = CompUtil.DecimalSeparator();
     private bool inputFocused;
@@ -90,9 +91,27 @@ newOpFlag: @newOpFlag*@
         }
     }
 
-    private async Task onInputValChange(ChangeEventArgs args)
+    private string boundValueBeforeChange;
+    public string BoundValue
     {
-        var value = args.Value.ToString();
+        get
+        {
+            if (inputFocused) return strValue;
+            return Opt?.FormatFunc is not null ? Opt.FormatFunc(Value) : strValue;
+        }
+        set
+        {
+            boundValueBeforeChange = strValue;
+            strValue = value; // modify the value according to constrains in bind:after func
+        }
+    }
+
+    //bind:after func
+    private async Task onInputValChange2()
+    {
+        var newStrValue = strValue;
+
+        var value = newStrValue;
 
         if (!isNumeric || string.IsNullOrEmpty(value))
         {
@@ -102,8 +121,6 @@ newOpFlag: @newOpFlag*@
             FieldChanged();
             return;
         }
-
-        var initVal = value;
 
         if (BindConverter.TryConvertTo<TValue>(value, CompUtil.CurrentCulture(), out var nval))
         {
@@ -116,26 +133,16 @@ newOpFlag: @newOpFlag*@
             value = string.Empty;
         }
 
-        if (value != strValue || initVal != strValue)
+        if (value != boundValueBeforeChange || newStrValue != boundValueBeforeChange)
         {
             strValue = value;
             await ValueChanged.InvokeAsync(Value);
             await afterChange();
 
             StateHasChanged();
-
-            FieldChanged();
+            FieldChanged();            
         }
-    }
-
-    protected string InputVal
-    {
-        get
-        {
-            if (inputFocused) return strValue;
-            return Opt?.FormatFunc is not null ? Opt.FormatFunc(Value) : strValue;
-        }
-    }
+    }    
 
     [Parameter]
     public NumericInputOpt<TValue> Opt { get; set; }
@@ -169,7 +176,7 @@ newOpFlag: @newOpFlag*@
         }
 
         return number;
-    }
+    }    
 
     [Parameter]
     public TValue Value
@@ -229,7 +236,7 @@ newOpFlag: @newOpFlag*@
         TValue nval;
 
         var nvalParsed = false;
-        // copied from InputVal.set
+        
         if (string.IsNullOrEmpty(value))
         {
             nval = default(TValue);
