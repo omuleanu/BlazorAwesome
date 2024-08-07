@@ -3961,7 +3961,7 @@ var awe = function ($) {
     initWave();
 
     return {
-        version: '1.3.0',
+        version: '1.3.1',
         pnn: preventNonNumbers,
         openOnHover: openOnHover,
         tabbable: tabbable,
