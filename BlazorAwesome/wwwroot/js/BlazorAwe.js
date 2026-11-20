@@ -400,6 +400,10 @@ var awe = function ($) {
 
     var isMobile = function () { return awe.isMobile(); };
 
+    function tclick(elm) {
+        elm.trigger(sclick);
+    }
+
     //#region core sync
 
     var popId = 1;
@@ -438,10 +442,6 @@ var awe = function ($) {
         }
 
         return result === "rtl";
-    }
-
-    function tclick(elm) {
-        elm.trigger(sclick);
     }
 
     function removeClass(o, s) {
@@ -875,14 +875,23 @@ var awe = function ($) {
             }
         }
 
+        // also handle '-' value
+        function myToNumber(str) {
+            if (isNull(str) || str.trim() == '-') return 0;
+            str = str.split(' ').join('');
+            return Number(str);
+        }
+
         function enforceEditorNumber() {
             var sval = getFloatStr(editor.val());
-            var nval = Number(sval);
+            var nval = myToNumber(sval);
 
             if (isNaN(nval) || sval.indexOf('x') > -1) {
 
-                nval = Number(getFloatStr(o.v.val()));
-                editor.val(nval);
+                nval = myToNumber(getFloatStr(o.v.val()));
+                if (!isNaN) {
+                    editor.val(nval);
+                }
             }
 
             return nval;
@@ -890,12 +899,16 @@ var awe = function ($) {
 
         function getNumericValStr(addVal, fractLen1, input, init) {
             var val = getFloatStr(input.val());
-            var floatVal = input === o.v ? Number(val) : enforceEditorNumber();
+            var floatVal = input === o.v ? myToNumber(val) : enforceEditorNumber();
+
+            // for unexpected string val leave it as is
+            if (isNaN(floatVal)) return input.val();
 
             var fractLen = fractLen1 || max(getFractLen(val), getFractLen(step.toString()));
             if (init && fractLen < o.dec) {
                 fractLen = o.dec;
             }
+
 
             if (!init && isNull(o.dec)) fractLen = 0;
 
@@ -1053,7 +1066,6 @@ var awe = function ($) {
             if (!donotset) scon.html(content);
             api.ld = 1;
             api.lay && api.lay();
-
             focusfirst(o);
             if (o.load) gfunc(o.load).call(o);
         }
@@ -2483,9 +2495,8 @@ var awe = function ($) {
             if (pid === myId && !mclick) return 1;
 
             var popener = kvIdOpener[pid];
-            if (popener) {
+            if (popener)
                 return isChildPopup(popener, myId);
-            }
         }
     }
 
@@ -3272,12 +3283,13 @@ var awe = function ($) {
         }
     }
 
+    // focus search txt blazor
     function focusFirstDesk(o) {
         if (isMobile() || o.noFocusFirst) return;
         tfocus(awe.tabbable(o.d).first());
     }
 
-    //#endregion awem sync
+    //#endregion awem sync    
 
     //#region blazor
 
@@ -3949,7 +3961,7 @@ var awe = function ($) {
     initWave();
 
     return {
-        version: '1.3.0',
+        version: '1.3.1',
         pnn: preventNonNumbers,
         openOnHover: openOnHover,
         tabbable: tabbable,
